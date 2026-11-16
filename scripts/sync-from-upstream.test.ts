@@ -218,7 +218,11 @@ test("rejects Cargo Git dependencies and path dependencies that escape the publi
 });
 
 test("scans the complete public repository allowlist, secret content and credential filenames", () => {
-  const safe = [entry("README.md", "# Desktop\n"), entry("scripts/check.ts")];
+  const safe = [
+    entry(".gitattributes", "* text=auto eol=lf\n"),
+    entry("README.md", "# Desktop\n"),
+    entry("scripts/check.ts"),
+  ];
   expect(() => validatePublicRepository(safe)).not.toThrow();
   expect(() => validatePublicRepository([...safe, entry("infra/private.ts")])).toThrow(
     /outside public repository allowlist/,
@@ -323,12 +327,27 @@ test("requires complete Apache-2.0 publication documents", () => {
   ).toThrow(/exactly match/);
 });
 
-test("requires Apache Cargo metadata and a publication-ready README", () => {
+test("requires stable checkouts, Apache Cargo metadata and a publication-ready README", () => {
   const valid = {
+    ".gitattributes": `* text=auto eol=lf
+
+*.icns binary
+*.ico binary
+*.png binary
+*.ttf binary
+*.woff2 binary
+*.wasm binary
+`,
     "Cargo.toml": '[workspace]\nresolver = "2"\n\n[workspace.package]\nlicense = "Apache-2.0"\n',
     "README.md": "# RenrenCodex Desktop\n",
   };
   expect(() => validatePublicationMetadata(valid)).not.toThrow();
+  expect(() =>
+    validatePublicationMetadata({
+      ...valid,
+      ".gitattributes": "* text=auto\n",
+    }),
+  ).toThrow(/must enforce LF text checkouts/);
   expect(() =>
     validatePublicationMetadata({
       ...valid,

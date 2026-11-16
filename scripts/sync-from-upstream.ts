@@ -24,6 +24,16 @@ const requiredPublicationDocuments = [
   "TRADEMARKS.md",
 ] as const;
 
+const EXPECTED_GIT_ATTRIBUTES = `* text=auto eol=lf
+
+*.icns binary
+*.ico binary
+*.png binary
+*.ttf binary
+*.woff2 binary
+*.wasm binary
+`;
+
 const APACHE_2_0_LICENSE_SHA256 =
   "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30";
 
@@ -40,6 +50,7 @@ const publicManagedPaths = [
 ] as const;
 
 const publicRepositoryFiles = new Set([
+  ".gitattributes",
   ".gitignore",
   ".prettierignore",
   ".prettierrc",
@@ -496,6 +507,15 @@ export function validatePublicationDocuments(
 export function validatePublicationMetadata(
   documents: Readonly<Record<string, string | undefined>>,
 ): void {
+  const attributes = documents[".gitattributes"];
+  if (
+    !attributes ||
+    `${attributes.replace(/\r\n/g, "\n").trimEnd()}\n` !== EXPECTED_GIT_ATTRIBUTES
+  ) {
+    throw new Error(
+      ".gitattributes must enforce LF text checkouts and preserve reviewed binary files",
+    );
+  }
   const cargo = documents["Cargo.toml"];
   if (!cargo) throw new Error("Cargo.toml is missing from the tracked publication tree");
   const workspacePackage = cargo
