@@ -49,6 +49,55 @@ Web/Desktop source-parity suites remain in the private upstream because they
 require `apps/web`. The schema v2 boundary scan and per-file hashes verify the
 exported client tree.
 
+## Official releases
+
+`Desktop Packages` produces short-lived internal test artifacts. It does not
+publish releases, and its Windows packages are not Authenticode signed while its
+macOS package uses only an ad-hoc signature.
+
+The separate `Desktop Release` workflow is fail closed and runs only when an
+exact `v<stable-semver>` tag is pushed for the current `main` commit. The tag must
+match `apps/desktop/package.json`, the snapshot must come from the upstream
+`production` channel, and CI for that exact public commit must already have
+succeeded. A release is published only after all of these checks pass:
+
+- Windows x64 MSI has a valid CA-issued Authenticode signature, RFC 3161
+  timestamp, and Tauri updater signature.
+- macOS Universal app and DMG have a Developer ID Application signature, Apple
+  notarization ticket, staple, Gatekeeper approval, and both `arm64` and
+  `x86_64` slices.
+- SPDX SBOM, SHA-256 checksums, and GitHub build-provenance attestations exist.
+- Every asset is uploaded to a draft before the immutable release is published.
+
+Linux packages remain CI artifacts until native package signing and the target
+distribution matrix are complete. Publishing a GitHub Release does not update
+the website's Desktop updater manifest or fixed download URL.
+
+Signing material belongs only in the tag-restricted `desktop-release` GitHub
+Environment. Configure these environment secrets:
+
+- `WINDOWS_CERTIFICATE_PFX_BASE64` and `WINDOWS_CERTIFICATE_PASSWORD`
+- `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, and
+  `RENRENCODEX_UPDATER_PUBLIC_KEY` (the public key is stored as a secret only to
+  preserve its multiline value)
+- `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_API_KEY_ID`,
+  `APPLE_API_ISSUER`, and `APPLE_API_PRIVATE_KEY_BASE64`
+
+Configure `WINDOWS_EXPECTED_CERTIFICATE_THUMBPRINT`, `WINDOWS_TIMESTAMP_URL`,
+and `APPLE_TEAM_ID` as environment variables. The pinned certificate thumbprint
+must be the 40-character SHA-1 thumbprint used by the Windows certificate store;
+the timestamp value must be the RFC 3161 service approved by the code signing
+certificate provider. The current workflow imports an exportable PFX; providers
+that require an HSM or cloud signing service need a reviewed Tauri `signCommand`
+integration before activation.
+
+Enable repository release immutability and restrict the Environment to `v*`
+tags. Set `ENABLE_OFFICIAL_DESKTOP_RELEASE=true` as the final environment
+variable only after every certificate, private key, password, and offline backup
+has been verified. Then, after the current `main` CI succeeds, create and push the
+matching version tag. Missing, expired, mismatched, unnotarized, or unstapled
+signing material stops the workflow before publication.
+
 Maintainers can refresh the snapshot from a local clone of the private monorepo:
 
 ```bash

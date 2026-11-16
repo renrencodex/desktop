@@ -1,0 +1,817 @@
+name: Desktop Release
+run-name: Desktop Release · ${{ github.ref_name }}
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  VITE_API_BASE_URL: https://renrencodex.com
+  VITE_WEB_BASE_URL: https://renrencodex.com
+  VITE_GATEWAY_WS_URL: wss://renrencodex.com/gateway
+
+jobs:
+  validate:
+    name: Validate release source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      commit_sha: ${{ steps.release.outputs.commit_sha }}
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Require the current main commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          main_sha="$(git rev-parse refs/remotes/origin/main)"
+          if [[ "$GITHUB_SHA" != "$main_sha" ]]; then
+            echo "release tag must point to the current main commit: tag=$GITHUB_SHA main=$main_sha" >&2
+            exit 1
+          fi
+
+      - name: Verify public snapshot gate
+        env:
+          PUBLICATION_REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
+        run: bun scripts/sync-from-upstream.ts --public-ready
+
+      - name: Validate tag, version, source, and published version
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: bun run release:validate
+
+      - name: Require successful main CI
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          runs="$(
+            curl --fail --silent --show-error -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GITHUB_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=100"
+          )"
+          if ! jq -e --arg sha "$GITHUB_SHA" '.workflow_runs | any(.head_sha == $sha and .conclusion == "success")' <<<"$runs" >/dev/null; then
+            echo "no successful main CI run exists for $GITHUB_SHA" >&2
+            exit 1
+          fi
+
+      - name: Require unused release tag
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          encoded_tag="$(jq -nr --arg value "$GITHUB_REF_NAME" '$value | @uri')"
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+          status="$(
+            curl --silent --show-error --output "$response_file" --write-out '%{http_code}' -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GITHUB_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$encoded_tag"
+          )"
+          if [[ "$status" == "200" ]]; then
+            echo "a GitHub Release already exists for $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          if [[ "$status" != "404" ]]; then
+            cat "$response_file" >&2
+            echo "unexpected GitHub Release lookup status: $status" >&2
+            exit 1
+          fi
+
+      - id: release
+        name: Record immutable release source
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ github.ref_name }}"
+          version="${version#v}"
+          {
+            echo "commit_sha=$GITHUB_SHA"
+            echo "tag=${{ github.ref_name }}"
+            echo "version=$version"
+          } >> "$GITHUB_OUTPUT"
+          echo "Releasing ${{ github.ref_name }} from $GITHUB_SHA." >> "$GITHUB_STEP_SUMMARY"
+
+  signing-preflight:
+    name: Validate protected signing configuration
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment:
+      name: desktop-release
+    steps:
+      - name: Require official release switch
+        env:
+          ENABLE_OFFICIAL_DESKTOP_RELEASE: ${{ vars.ENABLE_OFFICIAL_DESKTOP_RELEASE }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$ENABLE_OFFICIAL_DESKTOP_RELEASE" != "true" ]]; then
+            echo "desktop-release is not activated; set ENABLE_OFFICIAL_DESKTOP_RELEASE=true only after all signing material is provisioned" >&2
+            exit 1
+          fi
+
+      - name: Validate signing material without exposing it
+        env:
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_PRIVATE_KEY_BASE64: ${{ secrets.APPLE_API_PRIVATE_KEY_BASE64 }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          RENRENCODEX_UPDATER_PUBLIC_KEY: ${{ secrets.RENRENCODEX_UPDATER_PUBLIC_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          WINDOWS_CERTIFICATE_PFX_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_PFX_BASE64 }}
+          WINDOWS_EXPECTED_CERTIFICATE_THUMBPRINT: ${{ vars.WINDOWS_EXPECTED_CERTIFICATE_THUMBPRINT }}
+          WINDOWS_TIMESTAMP_URL: ${{ vars.WINDOWS_TIMESTAMP_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            APPLE_API_ISSUER
+            APPLE_API_KEY_ID
+            APPLE_API_PRIVATE_KEY_BASE64
+            APPLE_CERTIFICATE
+            APPLE_CERTIFICATE_PASSWORD
+            APPLE_TEAM_ID
+            RENRENCODEX_UPDATER_PUBLIC_KEY
+            TAURI_SIGNING_PRIVATE_KEY
+            TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+            WINDOWS_CERTIFICATE_PASSWORD
+            WINDOWS_CERTIFICATE_PFX_BASE64
+            WINDOWS_EXPECTED_CERTIFICATE_THUMBPRINT
+            WINDOWS_TIMESTAMP_URL
+          )
+          for name in "${required[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "missing protected Desktop release value: $name" >&2
+              exit 1
+            fi
+          done
+          [[ "$APPLE_API_ISSUER" =~ ^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}$ ]]
+          [[ "$APPLE_API_KEY_ID" =~ ^[A-Z0-9]{10}$ ]]
+          [[ "$APPLE_TEAM_ID" =~ ^[A-Z0-9]{10}$ ]]
+          [[ "$WINDOWS_EXPECTED_CERTIFICATE_THUMBPRINT" =~ ^[A-Fa-f0-9]{40}$ ]]
+          [[ "$WINDOWS_TIMESTAMP_URL" =~ ^https?:// ]]
+          [[ "$TAURI_SIGNING_PRIVATE_KEY" != "$RENRENCODEX_UPDATER_PUBLIC_KEY" ]]
+
+          temporary_directory="$(mktemp -d)"
+          trap 'rm -rf "$temporary_directory"' EXIT
+          printf '%s' "$WINDOWS_CERTIFICATE_PFX_BASE64" | base64 --decode > "$temporary_directory/windows.pfx"
+          printf '%s' "$APPLE_CERTIFICATE" | base64 --decode > "$temporary_directory/apple.p12"
+          printf '%s' "$APPLE_API_PRIVATE_KEY_BASE64" | base64 --decode > "$temporary_directory/apple-api-key.p8"
+          printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" | base64 --decode > "$temporary_directory/updater.key"
+          printf '%s' "$RENRENCODEX_UPDATER_PUBLIC_KEY" | base64 --decode > "$temporary_directory/updater.key.pub"
+          test -s "$temporary_directory/windows.pfx"
+          test -s "$temporary_directory/apple.p12"
+          test -s "$temporary_directory/updater.key"
+          openssl pkey -in "$temporary_directory/apple-api-key.p8" -noout >/dev/null
+          grep -Fq 'untrusted comment: minisign public key' "$temporary_directory/updater.key.pub"
+
+  sbom:
+    name: Generate source SBOM
+    needs: [validate, signing-preflight]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.validate.outputs.commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Verify public snapshot gate
+        run: bun scripts/sync-from-upstream.ts --public-ready
+
+      - name: Install JavaScript dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Prepare release metadata directory
+        run: mkdir -p target/release-metadata
+
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          path: .
+          format: spdx-json
+          output-file: target/release-metadata/renrencodex-desktop-${{ needs.validate.outputs.version }}.spdx.json
+          syft-version: v1.57.1
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: desktop-release-sbom-${{ needs.validate.outputs.commit_sha }}
+          path: target/release-metadata/*.spdx.json
+          if-no-files-found: error
+          retention-days: 14
+
+  build-windows:
+    name: Build signed Windows x64 release
+    needs: [validate, signing-preflight]
+    runs-on: windows-latest
+    timeout-minutes: 90
+    environment:
+      name: desktop-release
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.validate.outputs.commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Verify public snapshot gate
+        run: bun scripts/sync-from-upstream.ts --public-ready
+
+      - name: Install JavaScript dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Use stable Rust
+        run: rustup default stable
+
+      - name: Build and verify frontend before exposing signing material
+        run: bun run --cwd apps/desktop build
+
+      - name: Import Windows code-signing certificate
+        env:
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          WINDOWS_CERTIFICATE_PFX_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_PFX_BASE64 }}
+          WINDOWS_EXPECTED_CERTIFICATE_THUMBPRINT: ${{ vars.WINDOWS_EXPECTED_CERTIFICATE_THUMBPRINT }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $certificatePath = Join-Path $env:RUNNER_TEMP "renrencodex-code-signing.pfx"
+          try {
+            [IO.File]::WriteAllBytes(
+              $certificatePath,
+              [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_PFX_BASE64)
+            )
+            $password = ConvertTo-SecureString $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force
+            $importedCertificates = @(
+              Import-PfxCertificate -FilePath $certificatePath -CertStoreLocation Cert:\CurrentUser\My -Password $password
+            )
+            "WINDOWS_IMPORTED_CERTIFICATES=$(($importedCertificates.Thumbprint -join ';'))" |
+              Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            $codeSigningCertificates = @(
+              $importedCertificates | Where-Object {
+                $_.HasPrivateKey -and
+                ($_.EnhancedKeyUsageList.ObjectId.Value -contains "1.3.6.1.5.5.7.3.3")
+              }
+            )
+            if ($codeSigningCertificates.Count -ne 1) {
+              throw "Expected exactly one private-key Windows code-signing certificate"
+            }
+            $certificate = $codeSigningCertificates[0]
+            $now = Get-Date
+            if ($certificate.NotBefore -gt $now -or $certificate.NotAfter -le $now) {
+              throw "Windows code-signing certificate is not currently valid"
+            }
+            $expectedThumbprint = $env:WINDOWS_EXPECTED_CERTIFICATE_THUMBPRINT.Replace(" ", "").ToUpperInvariant()
+            if ($certificate.Thumbprint.ToUpperInvariant() -ne $expectedThumbprint) {
+              throw "Windows code-signing certificate does not match the pinned thumbprint"
+            }
+            "WINDOWS_CERTIFICATE_THUMBPRINT=$($certificate.Thumbprint)" |
+              Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          } finally {
+            Remove-Item $certificatePath -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Build Authenticode and updater-signed MSI
+        env:
+          RENRENCODEX_UPDATER_PUBLIC_KEY: ${{ secrets.RENRENCODEX_UPDATER_PUBLIC_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          WINDOWS_TIMESTAMP_URL: ${{ vars.WINDOWS_TIMESTAMP_URL }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $configurationPath = Join-Path $env:RUNNER_TEMP "tauri.release.conf.json"
+          $configuration = [ordered]@{
+            build = [ordered]@{
+              beforeBuildCommand = ""
+            }
+            bundle = [ordered]@{
+              createUpdaterArtifacts = $true
+              windows = [ordered]@{
+                certificateThumbprint = $env:WINDOWS_CERTIFICATE_THUMBPRINT
+                digestAlgorithm = "sha256"
+                timestampUrl = $env:WINDOWS_TIMESTAMP_URL
+                tsp = $true
+              }
+            }
+            plugins = [ordered]@{
+              updater = [ordered]@{
+                pubkey = $env:RENRENCODEX_UPDATER_PUBLIC_KEY.Trim()
+              }
+            }
+          }
+          try {
+            $configuration | ConvertTo-Json -Depth 8 | Set-Content -Path $configurationPath -Encoding utf8NoBOM
+            & bun run --cwd apps/desktop tauri build --ci --bundles msi --config $configurationPath
+            if ($LASTEXITCODE -ne 0) {
+              throw "Tauri Windows release build failed with exit code $LASTEXITCODE"
+            }
+          } finally {
+            Remove-Item $configurationPath -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Verify signatures and prepare Windows release assets
+        env:
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $msiCandidates = @(Get-ChildItem "target/release/bundle/msi/*.msi")
+          if ($msiCandidates.Count -ne 1) {
+            throw "Expected exactly one MSI, found $($msiCandidates.Count)"
+          }
+          $msi = $msiCandidates[0]
+          $updaterSignature = Get-Item "$($msi.FullName).sig"
+          $executable = Get-Item "target/release/renrencodex-desktop.exe"
+          $expectedThumbprint = $env:WINDOWS_CERTIFICATE_THUMBPRINT.Replace(" ", "").ToUpperInvariant()
+
+          $signTool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" |
+            Sort-Object FullName |
+            Select-Object -Last 1
+          if ($null -eq $signTool) {
+            throw "signtool.exe was not found"
+          }
+
+          foreach ($file in @($executable, $msi)) {
+            $signature = Get-AuthenticodeSignature $file.FullName
+            if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
+              throw "Authenticode validation failed for $($file.Name): $($signature.Status)"
+            }
+            $actualThumbprint = $signature.SignerCertificate.Thumbprint.Replace(" ", "").ToUpperInvariant()
+            if ($actualThumbprint -ne $expectedThumbprint) {
+              throw "Unexpected Authenticode signer for $($file.Name)"
+            }
+            if ($null -eq $signature.TimeStamperCertificate) {
+              throw "Authenticode timestamp is missing for $($file.Name)"
+            }
+            & $signTool.FullName verify /pa /all /v $file.FullName
+            if ($LASTEXITCODE -ne 0) {
+              throw "signtool verification failed for $($file.Name)"
+            }
+          }
+
+          $outputDirectory = "target/desktop-release-assets"
+          New-Item -ItemType Directory -Path $outputDirectory | Out-Null
+          $releaseName = "renrencodex-desktop-$env:RELEASE_VERSION-windows-x64.msi"
+          $releaseMsi = Join-Path $outputDirectory $releaseName
+          $releaseSignature = "$releaseMsi.sig"
+          Copy-Item $msi.FullName $releaseMsi
+          Copy-Item $updaterSignature.FullName $releaseSignature
+
+          $checksumLines = @($releaseMsi, $releaseSignature) |
+            ForEach-Object {
+              $hash = (Get-FileHash -Algorithm SHA256 $_).Hash.ToLowerInvariant()
+              "$hash  $(Split-Path -Leaf $_)"
+            }
+          $checksumLines | Set-Content -Path (Join-Path $outputDirectory "SHA256SUMS.windows-x64") -Encoding utf8NoBOM
+
+      - name: Remove Windows signing certificate
+        if: ${{ always() }}
+        shell: pwsh
+        run: |
+          if ($env:WINDOWS_IMPORTED_CERTIFICATES) {
+            foreach ($thumbprint in $env:WINDOWS_IMPORTED_CERTIFICATES.Split(';')) {
+              if ($thumbprint) {
+                Remove-Item "Cert:\CurrentUser\My\$thumbprint" -Force -ErrorAction SilentlyContinue
+              }
+            }
+          }
+
+      - name: Attest Windows release assets
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: target/desktop-release-assets/*
+
+      - name: Upload Windows release assets
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: desktop-release-windows-${{ needs.validate.outputs.commit_sha }}
+          path: target/desktop-release-assets/*
+          if-no-files-found: error
+          retention-days: 14
+
+  build-macos:
+    name: Build signed and notarized macOS Universal release
+    needs: [validate, signing-preflight]
+    runs-on: macos-15
+    timeout-minutes: 120
+    environment:
+      name: desktop-release
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.validate.outputs.commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Verify public snapshot gate
+        run: bun scripts/sync-from-upstream.ts --public-ready
+
+      - name: Install JavaScript dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Rust targets
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup default stable
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Build and verify frontend before exposing signing material
+        run: bun run --cwd apps/desktop build
+
+      - name: Import Developer ID Application certificate
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          certificate_path="$RUNNER_TEMP/renrencodex-developer-id.p12"
+          keychain_path="$RUNNER_TEMP/renrencodex-release.keychain-db"
+          keychain_password="$(uuidgen)$(uuidgen)"
+          echo "::add-mask::$keychain_password"
+          original_keychain="$(security default-keychain -d user | tr -d '"')"
+          {
+            echo "APPLE_RELEASE_KEYCHAIN=$keychain_path"
+            echo "APPLE_ORIGINAL_KEYCHAIN=$original_keychain"
+          } >> "$GITHUB_ENV"
+
+          printf '%s' "$APPLE_CERTIFICATE" | base64 --decode > "$certificate_path"
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security default-keychain -d user -s "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -lut 7200 "$keychain_path"
+          security import "$certificate_path" -k "$keychain_path" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$keychain_password" "$keychain_path" >/dev/null
+
+          identities="$(
+            security find-identity -v -p codesigning "$keychain_path" |
+              sed -n 's/.*"\(Developer ID Application:[^"]*\)".*/\1/p'
+          )"
+          identity_count="$(printf '%s\n' "$identities" | sed '/^$/d' | wc -l | tr -d ' ')"
+          if [[ "$identity_count" != "1" ]]; then
+            echo "expected exactly one Developer ID Application identity, found $identity_count" >&2
+            exit 1
+          fi
+          identity="$(printf '%s\n' "$identities" | sed -n '1p')"
+          if [[ "$identity" != *"($APPLE_TEAM_ID)"* ]]; then
+            echo "Developer ID identity does not match APPLE_TEAM_ID" >&2
+            exit 1
+          fi
+
+          echo "APPLE_SIGNING_IDENTITY=$identity" >> "$GITHUB_ENV"
+          rm -f "$certificate_path"
+
+      - name: Build Developer ID signed Universal app and DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+          configuration_path="$RUNNER_TEMP/tauri.release.conf.json"
+          trap 'rm -f "$configuration_path"' EXIT
+          printf '%s\n' '{"build":{"beforeBuildCommand":""}}' > "$configuration_path"
+          bun run --cwd apps/desktop tauri build --ci --target universal-apple-darwin --bundles app,dmg --config "$configuration_path"
+
+      - name: Notarize and staple app and DMG
+        env:
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_PRIVATE_KEY_BASE64: ${{ secrets.APPLE_API_PRIVATE_KEY_BASE64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle_root="target/universal-apple-darwin/release/bundle"
+          shopt -s nullglob
+          app_paths=("$bundle_root/macos/"*.app)
+          dmg_paths=("$bundle_root/dmg/"*.dmg)
+          if [[ "${#app_paths[@]}" != "1" || "${#dmg_paths[@]}" != "1" ]]; then
+            echo "expected exactly one app and one DMG" >&2
+            exit 1
+          fi
+
+          app_path="${app_paths[0]}"
+          dmg_path="${dmg_paths[0]}"
+          api_key_path="$RUNNER_TEMP/AuthKey_$APPLE_API_KEY_ID.p8"
+          app_submission="$RUNNER_TEMP/renrencodex-app-notarization.zip"
+          app_result="$RUNNER_TEMP/renrencodex-app-notarization.json"
+          dmg_result="$RUNNER_TEMP/renrencodex-dmg-notarization.json"
+          printf '%s' "$APPLE_API_PRIVATE_KEY_BASE64" | base64 --decode > "$api_key_path"
+          chmod 600 "$api_key_path"
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" "$app_submission"
+
+          xcrun notarytool submit "$app_submission" --key "$api_key_path" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER" --wait --output-format json > "$app_result"
+          jq -e '.status == "Accepted"' "$app_result" >/dev/null
+          xcrun stapler staple "$app_path"
+
+          xcrun notarytool submit "$dmg_path" --key "$api_key_path" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER" --wait --output-format json > "$dmg_result"
+          jq -e '.status == "Accepted"' "$dmg_result" >/dev/null
+          xcrun stapler staple "$dmg_path"
+          rm -f "$api_key_path" "$app_submission" "$app_result" "$dmg_result"
+
+      - name: Verify notarization and prepare macOS release assets
+        env:
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle_root="target/universal-apple-darwin/release/bundle"
+          shopt -s nullglob
+          app_paths=("$bundle_root/macos/"*.app)
+          dmg_paths=("$bundle_root/dmg/"*.dmg)
+          [[ "${#app_paths[@]}" == "1" && "${#dmg_paths[@]}" == "1" ]]
+          app_path="${app_paths[0]}"
+          dmg_path="${dmg_paths[0]}"
+
+          assert_universal_app() {
+            local candidate="$1"
+            local executable_name
+            local executable_path
+            local architectures
+            executable_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$candidate/Contents/Info.plist")"
+            executable_path="$candidate/Contents/MacOS/$executable_name"
+            test -x "$executable_path"
+            architectures="$(lipo -archs "$executable_path")"
+            [[ " $architectures " == *" arm64 "* ]]
+            [[ " $architectures " == *" x86_64 "* ]]
+          }
+
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+          codesign_info="$(codesign --display --verbose=4 "$app_path" 2>&1)"
+          grep -Fq 'Authority=Developer ID Application:' <<<"$codesign_info"
+          grep -Fq "TeamIdentifier=$APPLE_TEAM_ID" <<<"$codesign_info"
+          grep -Fq 'Timestamp=' <<<"$codesign_info"
+          grep -Eq 'flags=.*\(runtime\)' <<<"$codesign_info"
+          if grep -Fq 'Signature=adhoc' <<<"$codesign_info"; then
+            echo "formal macOS release must not use an ad-hoc signature" >&2
+            exit 1
+          fi
+          minimum_system_version="$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$app_path/Contents/Info.plist")"
+          [[ "$minimum_system_version" == "12.0" ]]
+          assert_universal_app "$app_path"
+          xcrun stapler validate "$app_path"
+          xcrun stapler validate "$dmg_path"
+          spctl --assess --type execute --verbose=4 "$app_path"
+          spctl --assess --type open --context context:primary-signature --verbose=4 "$dmg_path"
+          hdiutil verify "$dmg_path"
+
+          mount_dir="$(mktemp -d "$RUNNER_TEMP/renrencodex-dmg-mount.XXXXXX")"
+          mounted=0
+          cleanup_mount() {
+            if [[ "$mounted" == "1" ]]; then
+              hdiutil detach "$mount_dir" >/dev/null || true
+            fi
+            rm -rf "$mount_dir"
+          }
+          trap cleanup_mount EXIT
+          hdiutil attach "$dmg_path" -readonly -nobrowse -mountpoint "$mount_dir" >/dev/null
+          mounted=1
+          mounted_apps=("$mount_dir/"*.app)
+          [[ "${#mounted_apps[@]}" == "1" ]]
+          codesign --verify --deep --strict --verbose=2 "${mounted_apps[0]}"
+          assert_universal_app "${mounted_apps[0]}"
+          hdiutil detach "$mount_dir" >/dev/null
+          mounted=0
+          cleanup_mount
+          trap - EXIT
+
+          output_directory="target/desktop-release-assets"
+          mkdir "$output_directory"
+          dmg_name="renrencodex-desktop-$RELEASE_VERSION-macos-universal.dmg"
+          app_zip_name="renrencodex-desktop-$RELEASE_VERSION-macos-universal.app.zip"
+          cp "$dmg_path" "$output_directory/$dmg_name"
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" "$output_directory/$app_zip_name"
+          (
+            cd "$output_directory"
+            shasum -a 256 "$dmg_name" "$app_zip_name" > SHA256SUMS.macos-universal
+            shasum -a 256 -c SHA256SUMS.macos-universal
+          )
+
+      - name: Remove Apple signing material
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "$RUNNER_TEMP/renrencodex-developer-id.p12" "$RUNNER_TEMP/AuthKey_"*.p8 "$RUNNER_TEMP/renrencodex-"*-notarization.*
+          if [[ -n "${APPLE_ORIGINAL_KEYCHAIN:-}" && -e "$APPLE_ORIGINAL_KEYCHAIN" ]]; then
+            security default-keychain -d user -s "$APPLE_ORIGINAL_KEYCHAIN"
+          fi
+          if [[ -n "${APPLE_RELEASE_KEYCHAIN:-}" && -e "$APPLE_RELEASE_KEYCHAIN" ]]; then
+            security delete-keychain "$APPLE_RELEASE_KEYCHAIN"
+          fi
+
+      - name: Attest macOS release assets
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: target/desktop-release-assets/*
+
+      - name: Upload macOS release assets
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: desktop-release-macos-${{ needs.validate.outputs.commit_sha }}
+          path: target/desktop-release-assets/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish immutable GitHub Release
+    needs: [validate, sbom, build-windows, build-macos]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment:
+      name: desktop-release
+      url: https://github.com/${{ github.repository }}/releases/tag/${{ needs.validate.outputs.tag }}
+    permissions:
+      actions: read
+      attestations: write
+      contents: write
+      id-token: write
+    steps:
+      - name: Check out release metadata
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.validate.outputs.commit_sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Download verified release assets
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: desktop-release-*-${{ needs.validate.outputs.commit_sha }}
+          path: target/release-assets
+          merge-multiple: true
+
+      - name: Install updater signature verifier
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y minisign=0.11-1
+
+      - name: Verify and finalize release assets
+        env:
+          RENRENCODEX_UPDATER_PUBLIC_KEY: ${{ secrets.RENRENCODEX_UPDATER_PUBLIC_KEY }}
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_directory="target/release-assets"
+          snapshot_name="renrencodex-desktop-$RELEASE_VERSION-source-snapshot.json"
+          cp desktop-shared-snapshot.json "$release_directory/$snapshot_name"
+
+          expected=(
+            "renrencodex-desktop-$RELEASE_VERSION-windows-x64.msi"
+            "renrencodex-desktop-$RELEASE_VERSION-windows-x64.msi.sig"
+            "renrencodex-desktop-$RELEASE_VERSION-macos-universal.dmg"
+            "renrencodex-desktop-$RELEASE_VERSION-macos-universal.app.zip"
+            "renrencodex-desktop-$RELEASE_VERSION.spdx.json"
+            "SHA256SUMS.windows-x64"
+            "SHA256SUMS.macos-universal"
+            "$snapshot_name"
+          )
+          for file in "${expected[@]}"; do
+            test -s "$release_directory/$file"
+          done
+
+          updater_public_key="$RUNNER_TEMP/renrencodex-updater.pub"
+          updater_signature="$RUNNER_TEMP/renrencodex-updater.sig"
+          trap 'unlink "$updater_public_key" "$updater_signature" 2>/dev/null || true' EXIT
+          printf '%s' "$RENRENCODEX_UPDATER_PUBLIC_KEY" | base64 --decode > "$updater_public_key"
+          base64 --decode \
+            < "$release_directory/renrencodex-desktop-$RELEASE_VERSION-windows-x64.msi.sig" \
+            > "$updater_signature"
+          minisign -Vm \
+            "$release_directory/renrencodex-desktop-$RELEASE_VERSION-windows-x64.msi" \
+            -x "$updater_signature" \
+            -p "$updater_public_key"
+          grep -Fq "version:$RELEASE_VERSION" "$updater_signature"
+          unlink "$updater_public_key" "$updater_signature"
+          trap - EXIT
+
+          actual_count="$(find "$release_directory" -maxdepth 1 -type f | wc -l | tr -d ' ')"
+          if [[ "$actual_count" != "${#expected[@]}" ]]; then
+            echo "unexpected release asset count: $actual_count" >&2
+            find "$release_directory" -maxdepth 1 -type f -printf '%f\n' >&2
+            exit 1
+          fi
+
+          (
+            cd "$release_directory"
+            sha256sum -c SHA256SUMS.windows-x64
+            sha256sum -c SHA256SUMS.macos-universal
+            checksum_candidate="$(mktemp "$RUNNER_TEMP/renrencodex-sha256sums.XXXXXX")"
+            find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\0' |
+              sort -z |
+              xargs -0 sha256sum > "$checksum_candidate"
+            mv "$checksum_candidate" SHA256SUMS
+            sha256sum -c SHA256SUMS
+          )
+
+      - name: Attest final release asset set
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: target/release-assets/*
+
+      - name: Preserve final release asset set
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: desktop-release-final-${{ needs.validate.outputs.commit_sha }}
+          path: target/release-assets/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create draft, upload every asset, then publish
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.validate.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/$GITHUB_REPOSITORY"
+          headers=(
+            -H "Accept: application/vnd.github+json"
+            -H "Authorization: Bearer $GITHUB_TOKEN"
+            -H "X-GitHub-Api-Version: 2022-11-28"
+          )
+          payload="$(
+            jq -n --arg tag "$RELEASE_TAG" --arg name "人人Codex Desktop $RELEASE_VERSION" --arg body "正式签名安装包。请使用 SHA256SUMS 校验下载，并可通过 GitHub artifact attestations 验证构建来源。" '{
+                tag_name: $tag,
+                name: $name,
+                body: $body,
+                draft: true,
+                prerelease: false,
+                generate_release_notes: true
+              }'
+          )"
+          release_response="$RUNNER_TEMP/release.json"
+          curl --fail --silent --show-error "${headers[@]}" --request POST --data "$payload" "$api/releases" > "$release_response"
+          release_id="$(jq -er '.id' "$release_response")"
+          upload_url="$(jq -er '.upload_url | sub("\\{\\?name,label\\}$"; "")' "$release_response")"
+
+          while IFS= read -r -d '' asset; do
+            asset_name="$(basename "$asset")"
+            encoded_name="$(jq -nr --arg value "$asset_name" '$value | @uri')"
+            curl --fail --silent --show-error "${headers[@]}" -H "Content-Type: application/octet-stream" --request POST --data-binary "@$asset" "$upload_url?name=$encoded_name" >/dev/null
+          done < <(find target/release-assets -maxdepth 1 -type f -print0 | sort -z)
+
+          published="$(
+            curl --fail --silent --show-error "${headers[@]}" --request PATCH --data '{"draft":false,"make_latest":"true"}' "$api/releases/$release_id"
+          )"
+          release_url="$(jq -er '.html_url' <<<"$published")"
+          echo "Published immutable release: $release_url" >> "$GITHUB_STEP_SUMMARY"

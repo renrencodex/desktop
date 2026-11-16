@@ -10,5 +10,8 @@ Maintainers treat reports as confidential, acknowledge receipt, reproduce agains
 a supported release, coordinate a fix in the authoritative upstream, and disclose
 only after affected official builds are available.
 
-Only the latest official stable Desktop release is supported. Source snapshots,
-CI artifacts, forks, and unsigned builds are not official releases.
+Only the latest official stable Desktop release is supported. An official build
+is an immutable `v<stable-semver>` GitHub Release produced by the protected
+release workflow with its platform signatures, checksums, SBOM, and provenance
+attestations intact. Source snapshots, CI artifacts, forks, ad-hoc signed macOS
+packages, and unsigned builds are not official releases.

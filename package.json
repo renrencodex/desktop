@@ -17,6 +17,7 @@
     "sync:check": "bun run scripts/sync-from-upstream.ts --check",
     "publication:check": "bun run scripts/sync-from-upstream.ts --ci",
     "public:ready": "bun run scripts/sync-from-upstream.ts --public-ready",
+    "release:validate": "bun run scripts/validate-release.ts",
     "lint": "eslint .",
     "format:check": "prettier --check .",
     "typecheck": "bun run --filter \"*\" typecheck",
