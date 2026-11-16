@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "policy": "desktop-public-v1",
   "source": {
-    "commit": "b6926b2b425a2a9d4feda80653bac9c63f2b53c9",
+    "commit": "9f2dbe86c7ba25b67eb11eb5df6bd2cf06eddc5d",
     "channel": "production"
   },
   "paths": [
@@ -19,7 +19,7 @@
   "files": {
     "apps/desktop/.env.example": "87ed11742942f030b63fa54811a3d6694da0d1a7c4cdfaf66348fa18ebefe82d",
     "apps/desktop/index.html": "eac75b77323a1569edff497db76ab5bd14bdfc176f33564dce194a25f4cf5e07",
-    "apps/desktop/package.json": "8955abc3eb79b835fd2b47be393fad26a9becc2ac3c88a3997c3c37b65f28e48",
+    "apps/desktop/package.json": "5884d081fd4829d79555d6287ac6f1a9c8b3990c68644ce7b80ad266372ff48c",
     "apps/desktop/scripts/build-windows-release.test.ts": "da79973403ad69553acad48c9d10549d2a91bca65624bedcc7697291d5e12677",
     "apps/desktop/scripts/build-windows-release.ts": "2208fb133e6f5c4849e0957f6f11b8e43c836b7a48234a9e3ffd55b1f2d967ef",
     "apps/desktop/scripts/file-preview-retry.ts": "88b1484d3e2bc412bc3e2b5a083c89e4e15ab8fcb29f71d421ad13f1ccb03c25",

@@ -15,7 +15,7 @@ is generated from an exact upstream commit. See `desktop-shared-snapshot.json`.
 Do not edit managed paths directly.
 
 The current snapshot contains 341 managed files from production commit
-`b6926b2b425a2a9d4feda80653bac9c63f2b53c9`. Each file is recorded with a
+`9f2dbe86c7ba25b67eb11eb5df6bd2cf06eddc5d`. Each file is recorded with a
 SHA-256 digest in the snapshot manifest.
 
 ## Development
