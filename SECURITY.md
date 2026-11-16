@@ -7,8 +7,8 @@ Security tab. If that entry is unavailable, contact a maintainer privately befor
 sharing details.
 
 Maintainers treat reports as confidential, acknowledge receipt, reproduce against
-a supported release, coordinate a fix in the authoritative upstream, and disclose
-only after affected official builds are available.
+a supported release, coordinate a fix in this repository, and disclose only after
+affected official builds are available.
 
 Only the latest official stable Desktop release is supported. An official build
 is an immutable `v<stable-semver>` GitHub Release produced by the protected

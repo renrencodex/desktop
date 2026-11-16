@@ -34,8 +34,10 @@ const EXPECTED_GIT_ATTRIBUTES = `* text=auto eol=lf
 *.wasm binary
 `;
 
-const APACHE_2_0_LICENSE_SHA256 =
+const MIT_LICENSE_SHA256 = "f8efe6e0b006be848f7fe9aca9c9de304780f94ae3feb803ba9d86ca1830eb67";
+const LEGACY_APACHE_2_0_LICENSE_SHA256 =
   "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30";
+const REVIEWED_LICENSE_SHA256 = new Set([MIT_LICENSE_SHA256, LEGACY_APACHE_2_0_LICENSE_SHA256]);
 
 const publicManagedPaths = [
   "apps/desktop",
@@ -72,7 +74,7 @@ const publicRepositoryFiles = new Set([
   "package.json",
   "tsconfig.base.json",
 ]);
-const publicRepositoryRoots = [".github/workflows", "packaging", "scripts"] as const;
+const publicRepositoryRoots = [".github/workflows", "docs", "packaging", "scripts"] as const;
 const expectedWorkspacePackages = new Map<string, string>([
   ["apps/desktop/package.json", "@cloud-machine/desktop"],
   ["packages/api-client/package.json", "@cloud-machine/api-client"],
@@ -490,7 +492,7 @@ function normalizedLicenseSha256(value: string): string {
 
 export function validatePublicationDocuments(
   documents: Readonly<Record<string, string | undefined>>,
-  expectedLicenseSha256 = APACHE_2_0_LICENSE_SHA256,
+  expectedLicenseSha256 = MIT_LICENSE_SHA256,
 ): void {
   const missing = requiredPublicationDocuments.filter(
     (name) => !documents[name] || documents[name]!.trim().length === 0,
@@ -500,7 +502,7 @@ export function validatePublicationDocuments(
   }
   const license = documents.LICENSE!;
   if (normalizedLicenseSha256(license) !== expectedLicenseSha256) {
-    throw new Error("LICENSE must exactly match the reviewed Apache License 2.0 text");
+    throw new Error("LICENSE must exactly match the reviewed MIT License text");
   }
 }
 
@@ -521,8 +523,20 @@ export function validatePublicationMetadata(
   const workspacePackage = cargo
     .split(/\n(?=\[)/)
     .find((section) => section.trimStart().startsWith("[workspace.package]"));
-  if (!workspacePackage || !/^license\s*=\s*"Apache-2\.0"\s*$/m.test(workspacePackage)) {
-    throw new Error('Cargo workspace license metadata must be "Apache-2.0"');
+  if (!workspacePackage || !/^license\s*=\s*"MIT"\s*$/m.test(workspacePackage)) {
+    throw new Error('Cargo workspace license metadata must be "MIT"');
+  }
+  const packageDocument = documents["package.json"];
+  if (!packageDocument)
+    throw new Error("package.json is missing from the tracked publication tree");
+  let packageMetadata: { license?: unknown };
+  try {
+    packageMetadata = JSON.parse(packageDocument) as { license?: unknown };
+  } catch {
+    throw new Error("package.json is not valid JSON");
+  }
+  if (packageMetadata.license !== "MIT") {
+    throw new Error('package.json license metadata must be "MIT"');
   }
   const readme = documents["README.md"] ?? "";
   if (/not publication-ready|legacy schema v1|proprietary license/i.test(readme)) {
@@ -645,8 +659,8 @@ export function validatePublicRepositoryHistory(historyRoot = repositoryRoot): v
   for (const entry of entries) {
     if (entry.path === "LICENSE") {
       const value = entry.content.toString("utf8");
-      if (normalizedLicenseSha256(value) !== APACHE_2_0_LICENSE_SHA256) {
-        failures.push("a non-Apache LICENSE is still reachable; create a fresh public history");
+      if (!REVIEWED_LICENSE_SHA256.has(normalizedLicenseSha256(value))) {
+        failures.push("an unreviewed LICENSE is still reachable in public history");
       }
     }
     if (entry.path === "desktop-shared-snapshot.json") {

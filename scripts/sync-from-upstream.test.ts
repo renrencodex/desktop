@@ -221,6 +221,7 @@ test("scans the complete public repository allowlist, secret content and credent
   const safe = [
     entry(".gitattributes", "* text=auto eol=lf\n"),
     entry("README.md", "# Desktop\n"),
+    entry("docs/backend-api.md", "# Backend API\n"),
     entry("scripts/check.ts"),
   ];
   expect(() => validatePublicRepository(safe)).not.toThrow();
@@ -303,8 +304,8 @@ test("scans every reachable Git revision instead of only the current public tree
   }
 });
 
-test("requires complete Apache-2.0 publication documents", () => {
-  const reviewedLicenseFixture = "reviewed Apache-2.0 fixture\n";
+test("requires complete MIT publication documents", () => {
+  const reviewedLicenseFixture = "reviewed MIT fixture\n";
   const fixtureDigest = createHash("sha256").update(reviewedLicenseFixture).digest("hex");
   const valid = {
     LICENSE: reviewedLicenseFixture,
@@ -327,7 +328,7 @@ test("requires complete Apache-2.0 publication documents", () => {
   ).toThrow(/exactly match/);
 });
 
-test("requires stable checkouts, Apache Cargo metadata and a publication-ready README", () => {
+test("requires stable checkouts, MIT package metadata and a publication-ready README", () => {
   const valid = {
     ".gitattributes": `* text=auto eol=lf
 
@@ -338,7 +339,8 @@ test("requires stable checkouts, Apache Cargo metadata and a publication-ready R
 *.woff2 binary
 *.wasm binary
 `,
-    "Cargo.toml": '[workspace]\nresolver = "2"\n\n[workspace.package]\nlicense = "Apache-2.0"\n',
+    "Cargo.toml": '[workspace]\nresolver = "2"\n\n[workspace.package]\nlicense = "MIT"\n',
+    "package.json": '{"name":"renrencodex-desktop","license":"MIT"}\n',
     "README.md": "# RenrenCodex Desktop\n",
   };
   expect(() => validatePublicationMetadata(valid)).not.toThrow();
@@ -354,6 +356,12 @@ test("requires stable checkouts, Apache Cargo metadata and a publication-ready R
       "Cargo.toml": '[workspace.package]\nlicense = "UNLICENSED"\n',
     }),
   ).toThrow(/Cargo workspace license metadata/);
+  expect(() =>
+    validatePublicationMetadata({
+      ...valid,
+      "package.json": '{"name":"renrencodex-desktop","license":"UNLICENSED"}\n',
+    }),
+  ).toThrow(/package.json license metadata/);
   expect(() =>
     validatePublicationMetadata({
       ...valid,
