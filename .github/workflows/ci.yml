@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main, production]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+      - name: Verify publication policy
+        env:
+          PUBLICATION_REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
+        run: bun scripts/sync-from-upstream.ts --ci
+      - run: bun install --frozen-lockfile
+      - run: bun audit --audit-level high
+      - run: bun run format:check
+      - run: bun run lint
+      - run: bun run typecheck
+      - run: bun run test
+      - run: bun run generate:client-protocol
+      - run: git diff --exit-code
+
+  rust:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          components: clippy,rustfmt
+      - name: Install Tauri system dependencies
+        run: >-
+          sudo apt-get update && sudo apt-get install -y
+          libwebkit2gtk-4.1-dev
+          libayatana-appindicator3-dev
+          librsvg2-dev
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+
+  desktop-web-build:
+    runs-on: ubuntu-24.04
+    env:
+      VITE_API_BASE_URL: https://renrencodex.com
+      VITE_WEB_BASE_URL: https://renrencodex.com
+      VITE_GATEWAY_WS_URL: wss://renrencodex.com/gateway
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: bun run build

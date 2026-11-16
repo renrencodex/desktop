@@ -1,0 +1,1963 @@
+@source "./";
+
+@font-face {
+  font-family: "Iosevka Term";
+  src: url("/fonts/IosevkaTerm-34.9.1-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Iosevka Term";
+  src: url("/fonts/IosevkaTerm-34.9.1-Bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* 人人 Codex 主题色阶。沿用 Tailwind zinc 工具类，但由主题变量统一换肤。 */
+@theme {
+  --font-sans:
+    var(--font-geist-sans), "Noto Sans SC", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: var(--font-geist-mono), "Noto Sans SC", "PingFang SC", "Microsoft YaHei", monospace;
+  --font-terminal:
+    "Iosevka Term", "Noto Sans Mono CJK SC", "Noto Sans CJK SC", "Noto Sans SC", "PingFang SC",
+    "Microsoft YaHei", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", monospace;
+
+  --color-zinc-950: #0d100c;
+  --color-zinc-900: #151a12;
+  --color-zinc-800: #232a1d;
+  --color-zinc-700: #2a3322;
+  --color-zinc-600: #525e46;
+  --color-zinc-500: #7a8568;
+  --color-zinc-400: #a8b39e;
+  --color-zinc-300: #c3cdb8;
+  --color-zinc-200: #dfe6d6;
+  --color-zinc-100: #f0f5ec;
+}
+
+:root {
+  color-scheme: dark;
+  --cm-surface-canvas: #0d100c;
+  --cm-surface-titlebar: #11150e;
+  --cm-surface-sidebar: #070a06;
+  --cm-surface-panel: #151a12;
+  --cm-surface-workspace: #0a0d09;
+  --cm-terminal-bg: #111610;
+  --cm-surface-hover: #1e241a;
+  --cm-border: #2a3322;
+  --cm-accent: #76b900;
+  --cm-accent-fg: #0e120a;
+  --cm-accent-hover: #86d900;
+  --cm-accent-muted: rgb(118 185 0 / 12%);
+  --cm-glow: rgb(118 185 0 / 8%);
+  --cm-grid: rgb(118 185 0 / 4.5%);
+  --cm-workbench-glow-top: rgb(118 185 0 / 10%);
+  --cm-workbench-glow-left: rgb(118 185 0 / 6%);
+  --cm-workbench-glow-right: rgb(168 179 158 / 5%);
+  --cm-shadow: 0 16px 48px rgb(0 0 0 / 45%), 0 0 24px rgb(118 185 0 / 6%);
+  --cm-panel-shadow: 0 1px 2px rgb(0 0 0 / 50%), inset 0 1px 0 rgb(240 245 236 / 3%);
+  --cm-input-bg: #0d100c;
+  --cm-overlay: rgb(0 0 0 / 60%);
+  --cm-link: #86d900;
+  --cm-danger-bg: rgb(69 10 10 / 42%);
+  --cm-danger-border: rgb(127 29 29 / 65%);
+  --cm-danger-fg: #fca5a5;
+  --cm-warning-bg: rgb(69 26 3 / 35%);
+  --cm-warning-border: rgb(120 53 15 / 60%);
+  --cm-warning-fg: #fcd34d;
+  --background: var(--cm-surface-canvas);
+  --foreground: #f0f5ec;
+  --card: var(--cm-surface-panel);
+  --card-foreground: #f0f5ec;
+  --popover: #171c14;
+  --popover-foreground: #f0f5ec;
+  --primary: var(--cm-accent);
+  --primary-foreground: var(--cm-accent-fg);
+  --secondary: #1e241a;
+  --secondary-foreground: #e8efe0;
+  --muted: #1a1f16;
+  --muted-foreground: #a8b39e;
+  --accent: #232a1d;
+  --accent-foreground: #eef4e6;
+  --destructive: #ef4444;
+  --border: var(--cm-border);
+  --input: #3a4430;
+  --ring: #76b900;
+  --radius: 0.125rem;
+  --cm-button-radius: 8px;
+  --cm-card-radius: 8px;
+}
+
+html.light {
+  --color-red-300: #b42318;
+  --color-red-400: #dc2626;
+  --color-red-500: #dc2626;
+  --color-red-600: #b91c1c;
+  --color-red-900: #f4b4b4;
+  --color-red-950: #fde8e8;
+  --color-emerald-300: #0f7a5a;
+  --color-emerald-400: #0f8a62;
+  --color-emerald-500: #0f7a5a;
+  --color-emerald-900: #9fe0c4;
+  --color-emerald-950: #e8f8f1;
+  --color-amber-300: #9a6700;
+  --color-amber-400: #b45309;
+  --color-amber-500: #92400e;
+  --color-amber-900: #f3d089;
+  --color-amber-950: #fff6db;
+  --color-sky-400: #0284c7;
+  --color-sky-500: #0369a1;
+  --color-violet-500: #6d28d9;
+  --color-orange-500: #c2410c;
+  --color-fuchsia-500: #a21caf;
+  --color-cyan-500: #0e7490;
+}
+
+html[data-theme="ink-white"] {
+  color-scheme: light;
+  --color-zinc-950: #fafafa;
+  --color-zinc-900: #ffffff;
+  --color-zinc-800: #ebebeb;
+  --color-zinc-700: #d1d1d1;
+  --color-zinc-600: #a1a1a1;
+  --color-zinc-500: #636363;
+  --color-zinc-400: #525252;
+  --color-zinc-300: #333333;
+  --color-zinc-200: #171717;
+  --color-zinc-100: #0a0a0a;
+  --cm-surface-canvas: #fafafa;
+  --cm-surface-titlebar: #ffffff;
+  --cm-surface-sidebar: #f2f2f2;
+  --cm-surface-panel: #ffffff;
+  --cm-surface-workspace: #ffffff;
+  --cm-terminal-bg: #2b2b2b;
+  --cm-surface-hover: #e8e8e8;
+  --cm-border: #d1d1d1;
+  --cm-accent: #171717;
+  --cm-accent-fg: #fafafa;
+  --cm-accent-hover: #2e2e2e;
+  --cm-accent-muted: rgb(23 23 23 / 8%);
+  --cm-glow: rgb(10 10 10 / 4%);
+  --cm-grid: rgb(10 10 10 / 4%);
+  --cm-workbench-glow-top: rgb(255 255 255 / 90%);
+  --cm-workbench-glow-left: color-mix(in oklch, var(--muted) 80%, transparent);
+  --cm-workbench-glow-right: color-mix(in oklch, var(--muted) 55%, transparent);
+  --cm-shadow: 0 1px 2px rgb(0 0 0 / 5%);
+  --cm-panel-shadow: 0 1px 2px rgb(0 0 0 / 5%);
+  --cm-input-bg: #ffffff;
+  --cm-overlay: rgb(10 10 10 / 25%);
+  --cm-link: #171717;
+  --cm-danger-bg: #fef2f2;
+  --cm-danger-border: #fecaca;
+  --cm-danger-fg: #b91c1c;
+  --cm-warning-bg: #fefce8;
+  --cm-warning-border: #fde047;
+  --cm-warning-fg: #713f12;
+  --background: var(--cm-surface-canvas);
+  --foreground: #0a0a0a;
+  --card: var(--cm-surface-panel);
+  --card-foreground: #0a0a0a;
+  --popover: var(--cm-surface-panel);
+  --popover-foreground: #0a0a0a;
+  --primary: var(--cm-accent);
+  --primary-foreground: var(--cm-accent-fg);
+  --secondary: #e6e6e6;
+  --secondary-foreground: #171717;
+  --muted: #ebebeb;
+  --muted-foreground: #636363;
+  --accent: #e8e8e8;
+  --accent-foreground: #171717;
+  --destructive: #e40014;
+  --border: var(--cm-border);
+  --input: #d1d1d1;
+  --ring: #525252;
+}
+
+html[data-theme="cursor-dark"] {
+  color-scheme: dark;
+  --color-zinc-950: #141414;
+  --color-zinc-900: #181818;
+  --color-zinc-800: #242424;
+  --color-zinc-700: #343434;
+  --color-zinc-600: #626262;
+  --color-zinc-500: #989898;
+  --color-zinc-400: #bdbdbd;
+  --color-zinc-300: #d6d6dd;
+  --color-zinc-200: #e6e6e6;
+  --color-zinc-100: #f0f0f0;
+  --color-red-300: #fc98a9;
+  --color-red-400: #fc6b83;
+  --color-red-500: #e34671;
+  --color-red-900: #7a263e;
+  --color-red-950: #2b171d;
+  --color-emerald-400: #70b489;
+  --color-emerald-500: #3fa266;
+  --color-amber-300: #f1c889;
+  --color-amber-400: #f1b467;
+  --color-amber-500: #d2943e;
+  --color-sky-400: #88c0d0;
+  --cm-surface-canvas: #141414;
+  --cm-surface-titlebar: #141414;
+  --cm-surface-sidebar: #141414;
+  --cm-surface-panel: #181818;
+  --cm-surface-workspace: #181818;
+  --cm-terminal-bg: #141414;
+  --cm-surface-hover: #242424;
+  --cm-border: #2a2a2a;
+  --cm-accent: #3a3a3a;
+  --cm-accent-fg: #f0f0f0;
+  --cm-accent-hover: #484848;
+  --cm-accent-muted: rgb(240 240 240 / 8%);
+  --cm-glow: transparent;
+  --cm-grid: transparent;
+  --cm-workbench-glow-top: transparent;
+  --cm-workbench-glow-left: transparent;
+  --cm-workbench-glow-right: transparent;
+  --cm-shadow: 0 16px 48px rgb(0 0 0 / 40%);
+  --cm-panel-shadow: 0 1px 2px rgb(0 0 0 / 45%);
+  --cm-input-bg: #181818;
+  --cm-overlay: rgb(0 0 0 / 60%);
+  --cm-link: #88c0d0;
+  --cm-danger-bg: rgb(227 70 113 / 12%);
+  --cm-danger-border: rgb(252 107 131 / 42%);
+  --cm-danger-fg: #fc6b83;
+  --cm-warning-bg: rgb(241 180 103 / 12%);
+  --cm-warning-border: rgb(241 180 103 / 42%);
+  --cm-warning-fg: #f1b467;
+  --background: var(--cm-surface-canvas);
+  --foreground: #f0f0f0;
+  --card: var(--cm-surface-panel);
+  --card-foreground: #f0f0f0;
+  --popover: #141414;
+  --popover-foreground: #f0f0f0;
+  --primary: var(--cm-accent);
+  --primary-foreground: var(--cm-accent-fg);
+  --secondary: #242424;
+  --secondary-foreground: #f0f0f0;
+  --muted: #242424;
+  --muted-foreground: #989898;
+  --accent: #2a2a2a;
+  --accent-foreground: #f0f0f0;
+  --destructive: #e34671;
+  --border: var(--cm-border);
+  --input: #343434;
+  --ring: #989898;
+}
+
+/* Theme selection closes in place before changing the global palette/native color scheme. */
+.cm-theme-menu[data-open] {
+  animation: cm-theme-menu-enter 80ms ease-out;
+}
+
+.cm-theme-menu[data-closed] {
+  animation: cm-theme-menu-exit 80ms ease-out forwards;
+}
+
+@keyframes cm-theme-menu-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cm-theme-menu-exit {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cm-theme-menu[data-open],
+  .cm-theme-menu[data-closed] {
+    animation: none;
+  }
+}
+
+/* 工作区默认保持实色；墨白主题由最外层画布统一绘制连续背景。 */
+.cm-canvas {
+  background-color: var(--color-zinc-950);
+}
+
+.cm-sidebar-surface {
+  background: var(--cm-surface-sidebar);
+}
+
+.cm-workspace-surface {
+  background-color: var(--cm-surface-workspace);
+}
+
+.cm-terminal-surface {
+  background-color: var(--cm-terminal-bg);
+}
+
+/* 手机端使用轻量 textarea 代替 Monaco；墨白主题同步使用炭黑编辑器色板。 */
+html[data-theme="ink-white"] .cm-mobile-code-editor {
+  color-scheme: dark;
+  background: #2b2b2b;
+  color: #e4e4e7;
+}
+
+html[data-theme="ink-white"] .cm-mobile-code-editor-toolbar {
+  border-color: #3f3f46;
+  background: #222225;
+}
+
+html[data-theme="ink-white"] .cm-mobile-code-editor-search {
+  border-color: #3f3f46;
+  background: #18181b;
+  color: #e4e4e7;
+}
+
+html[data-theme="ink-white"] .cm-mobile-code-editor-search :is(svg, span) {
+  color: #a1a1aa;
+}
+
+html[data-theme="ink-white"] .cm-mobile-code-editor-search input::placeholder {
+  color: #a1a1aa;
+}
+
+html[data-theme="ink-white"] .cm-mobile-code-editor :is(.cm-button, .cm-icon-button) {
+  border-color: #3f3f46;
+  background: #27272a;
+  color: #e4e4e7;
+}
+
+html[data-theme="ink-white"] .cm-mobile-code-editor :is(.cm-button, .cm-icon-button):hover {
+  background: #3f3f46;
+}
+
+html[data-theme="ink-white"] .cm-mobile-code-editor-text {
+  background: #2b2b2b;
+  color: #e4e4e7;
+  caret-color: #f4f4f5;
+}
+
+html[data-theme="ink-white"] .cm-mobile-code-editor-text::selection {
+  background: #3f3f46;
+  color: #fafafa;
+}
+
+/* 绿苔的移动编辑器与 Monaco 共用深苔绿色调。 */
+html[data-theme="night-moss"] .cm-mobile-code-editor {
+  color-scheme: dark;
+  background: #111610;
+  color: #dce5d4;
+}
+
+html[data-theme="night-moss"] .cm-mobile-code-editor-toolbar {
+  border-color: #35482d;
+  background: #1b2419;
+}
+
+html[data-theme="night-moss"] .cm-mobile-code-editor-search {
+  border-color: #35482d;
+  background: #111610;
+  color: #dce5d4;
+}
+
+html[data-theme="night-moss"] .cm-mobile-code-editor-search :is(svg, span),
+html[data-theme="night-moss"] .cm-mobile-code-editor-search input::placeholder {
+  color: #a0b295;
+}
+
+html[data-theme="night-moss"] .cm-mobile-code-editor :is(.cm-button, .cm-icon-button) {
+  border-color: #35482d;
+  background: #222c1e;
+  color: #dce5d4;
+}
+
+html[data-theme="night-moss"] .cm-mobile-code-editor :is(.cm-button, .cm-icon-button):hover {
+  background: #35482d;
+}
+
+html[data-theme="night-moss"] .cm-mobile-code-editor-text {
+  background: #111610;
+  color: #dce5d4;
+  caret-color: #a6d66d;
+}
+
+html[data-theme="night-moss"] .cm-mobile-code-editor-text::selection {
+  background: #35482d;
+  color: #f0f5e9;
+}
+
+/* Cursor 的移动编辑器与桌面 Monaco 使用同一套扁平炭黑色板。 */
+html[data-theme="cursor-dark"] .cm-mobile-code-editor {
+  color-scheme: dark;
+  background: #181818;
+  color: #f0f0f0;
+}
+
+html[data-theme="cursor-dark"] .cm-mobile-code-editor-toolbar {
+  border-color: #2a2a2a;
+  background: #141414;
+}
+
+html[data-theme="cursor-dark"] .cm-mobile-code-editor-search {
+  border-color: #343434;
+  background: #181818;
+  color: #f0f0f0;
+}
+
+html[data-theme="cursor-dark"] .cm-mobile-code-editor-search :is(svg, span),
+html[data-theme="cursor-dark"] .cm-mobile-code-editor-search input::placeholder {
+  color: #989898;
+}
+
+html[data-theme="cursor-dark"] .cm-mobile-code-editor :is(.cm-button, .cm-icon-button) {
+  border-color: #343434;
+  background: #242424;
+  color: #f0f0f0;
+}
+
+html[data-theme="cursor-dark"] .cm-mobile-code-editor :is(.cm-button, .cm-icon-button):hover {
+  background: #343434;
+}
+
+html[data-theme="cursor-dark"] .cm-mobile-code-editor-text {
+  background: #181818;
+  color: #f0f0f0;
+  caret-color: #f0f0f0;
+}
+
+html[data-theme="cursor-dark"] .cm-mobile-code-editor-text::selection {
+  background: #404040;
+  color: #f0f0f0;
+}
+
+.cm-resource-explorer {
+  border: 1px solid var(--cm-border);
+  border-radius: var(--cm-card-radius);
+  background: color-mix(in srgb, var(--cm-surface-panel) 90%, transparent);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground) 6%, transparent);
+}
+
+.cm-resource-explorer .cm-sidebar-nav-flat {
+  border-radius: 0;
+}
+
+.cm-resource-explorer-header {
+  background: color-mix(in srgb, var(--cm-surface-panel) 64%, transparent);
+}
+
+html:is([data-theme="night-moss"], [data-theme="ink-white"]) .cm-workbench-backdrop {
+  background-color: var(--cm-surface-canvas);
+  background-image:
+    radial-gradient(circle at 50% -10%, var(--cm-workbench-glow-top), transparent 42%),
+    radial-gradient(circle at 12% 88%, var(--cm-workbench-glow-left), transparent 36%),
+    radial-gradient(circle at 88% 72%, var(--cm-workbench-glow-right), transparent 34%);
+  background-size: auto, auto, auto;
+}
+
+html:is([data-theme="night-moss"], [data-theme="ink-white"]) .cm-workbench-backdrop .cm-canvas {
+  background-color: transparent;
+}
+
+html[data-theme="cursor-dark"] .cm-workbench-backdrop {
+  background-color: var(--cm-surface-canvas);
+  background-image: none;
+}
+
+html,
+body,
+.next-root,
+.client-root,
+#root {
+  height: 100%;
+}
+
+.next-root {
+  min-height: 100dvh;
+}
+
+.client-root,
+#root {
+  min-height: 100%;
+}
+
+.cm-app-shell {
+  --cm-titlebar-height: calc(36px + env(safe-area-inset-top, 0px));
+  --cm-statusbar-height: calc(22px + env(safe-area-inset-bottom, 0px));
+  position: fixed;
+  top: var(--cm-viewport-offset-top, 0px);
+  left: var(--cm-viewport-offset-left, 0px);
+  width: var(--cm-viewport-width, 100%);
+  height: var(--cm-viewport-height, 100dvh);
+  grid-template-rows: var(--cm-titlebar-height) minmax(0, 1fr) var(--cm-statusbar-height);
+}
+
+.cm-titlebar {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
+  padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
+}
+
+.cm-statusbar {
+  padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
+}
+
+.cm-app-content {
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+.cm-responsive-sidebar,
+.cm-responsive-sidebar-backdrop {
+  top: var(--cm-titlebar-height);
+  bottom: var(--cm-statusbar-height);
+}
+
+.cm-responsive-sidebar {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+.cm-mobile-workbench-nav {
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+/* 长按复制只属于终端画布；快捷键和移动 Tab 的文字不能被系统选中。 */
+@media (max-width: 639px) {
+  .cm-terminal-touch-toolbar,
+  .cm-terminal-touch-toolbar *,
+  .cm-mobile-workbench-nav,
+  .cm-mobile-workbench-nav * {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+}
+
+body {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  background-color: var(--cm-surface-canvas);
+  /* 顶部主题辉光 + 48px 网格。 */
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, var(--cm-glow), transparent),
+    linear-gradient(var(--cm-grid) 1px, transparent 0),
+    linear-gradient(90deg, var(--cm-grid) 1px, transparent 0);
+  background-attachment: fixed;
+  background-size:
+    100% 100%,
+    48px 48px,
+    48px 48px;
+  color: var(--color-zinc-100);
+  font-size: 12px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+@media (max-width: 639px) {
+  .cm-app-shell {
+    --cm-titlebar-height: calc(40px + env(safe-area-inset-top, 0px));
+    --cm-statusbar-height: 0px;
+    grid-template-rows: var(--cm-titlebar-height) minmax(0, 1fr);
+  }
+
+  .cm-statusbar {
+    display: none;
+  }
+
+  .cm-dialog-content {
+    width: calc(100% - 2rem);
+    max-width: none;
+    max-height: min(72dvh, calc(var(--cm-viewport-height, 100dvh) - 2rem));
+    overflow-y: auto;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (pointer: coarse) and (min-width: 640px) {
+  .cm-app-shell {
+    --cm-titlebar-height: calc(40px + env(safe-area-inset-top, 0px));
+  }
+}
+
+/*
+ * 不要在 layer 外给 button/input 写 `font: inherit`。
+ * Tailwind Preflight 已在 @layer base 处理继承；写在 layer 外会压过
+ * @layer components 里的 text-[11px] / font-medium / text-sm。
+ */
+
+button,
+a,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes cm-progress-indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+@keyframes cm-loading-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.cm-progress-indeterminate {
+  width: 33.333%;
+  animation: cm-progress-indeterminate 1.2s ease-in-out infinite;
+}
+
+/* 按钮与卡片统一使用 8px 圆角；链接式按钮也遵循同一规范。 */
+button,
+input:is([type="button"], [type="submit"], [type="reset"]),
+.cm-button,
+.cm-button-primary,
+.cm-button-danger,
+.cm-button-warning,
+.cm-icon-button {
+  border-radius: var(--cm-button-radius);
+}
+
+button:not(:disabled),
+a[href],
+select:not(:disabled),
+summary,
+label[for],
+[role="button"]:not([aria-disabled="true"]),
+[role="link"]:not([aria-disabled="true"]),
+[role="menuitem"]:not([aria-disabled="true"]),
+[role="menuitemcheckbox"]:not([aria-disabled="true"]),
+[role="menuitemradio"]:not([aria-disabled="true"]),
+[role="option"]:not([aria-disabled="true"]),
+[role="tab"]:not([aria-disabled="true"]),
+[role="treeitem"]:not([aria-disabled="true"]),
+input:is(
+    [type="button"],
+    [type="submit"],
+    [type="reset"],
+    [type="checkbox"],
+    [type="radio"],
+    [type="file"]
+  ):not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled,
+input:disabled,
+[role="button"][aria-disabled="true"],
+[role="link"][aria-disabled="true"],
+[role="menuitem"][aria-disabled="true"],
+[role="menuitemcheckbox"][aria-disabled="true"],
+[role="menuitemradio"][aria-disabled="true"],
+[role="option"][aria-disabled="true"],
+[role="tab"][aria-disabled="true"],
+[role="treeitem"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+:focus-visible {
+  outline: 1px solid var(--cm-accent);
+  outline-offset: 1px;
+}
+
+/* 原生复选框统一使用当前主题的控件色，避免不同浏览器和系统主题产生不同外观。 */
+input[type="checkbox"] {
+  --cm-checkbox-accent: var(--cm-accent);
+  --cm-checkbox-accent-hover: var(--cm-accent-hover);
+  --cm-checkbox-foreground: var(--cm-accent-fg);
+  appearance: none;
+  display: inline-grid;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  place-content: center;
+  border: 1px solid color-mix(in srgb, var(--cm-border) 68%, var(--foreground));
+  border-radius: 4px;
+  background: var(--cm-input-bg);
+  color: var(--cm-checkbox-foreground);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--foreground) 7%, transparent);
+  vertical-align: middle;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+input[type="checkbox"]::before {
+  box-sizing: border-box;
+  width: 4px;
+  height: 7px;
+  border: solid currentColor;
+  border-width: 0 1.5px 1.5px 0;
+  content: "";
+  opacity: 0;
+  transform: translateY(-1px) rotate(45deg) scale(0.65);
+  transition:
+    opacity 100ms ease,
+    transform 100ms ease;
+}
+
+input[type="checkbox"]:hover:not(:disabled):not(:checked):not(:indeterminate) {
+  border-color: color-mix(in srgb, var(--cm-checkbox-accent) 68%, var(--cm-border));
+  background: var(--cm-surface-hover);
+}
+
+input[type="checkbox"]:is(:checked, :indeterminate) {
+  border-color: var(--cm-checkbox-accent);
+  background: var(--cm-checkbox-accent);
+  box-shadow: none;
+}
+
+input[type="checkbox"]:is(:checked, :indeterminate):hover:not(:disabled) {
+  border-color: var(--cm-checkbox-accent-hover);
+  background: var(--cm-checkbox-accent-hover);
+}
+
+input[type="checkbox"]:checked::before {
+  opacity: 1;
+  transform: translateY(-1px) rotate(45deg) scale(1);
+}
+
+input[type="checkbox"]:indeterminate::before {
+  width: 7px;
+  height: 1.5px;
+  border: 0;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 1;
+  transform: none;
+}
+
+input[type="checkbox"]:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--cm-checkbox-accent) 65%, var(--foreground));
+  outline-offset: 2px;
+}
+
+input[type="checkbox"]:disabled {
+  opacity: 0.45;
+}
+
+label:has(input[type="checkbox"]:not(:disabled)) {
+  cursor: pointer;
+}
+
+label:has(input[type="checkbox"]:disabled) {
+  cursor: not-allowed;
+}
+
+input[type="checkbox"].cm-checkbox-danger {
+  --cm-checkbox-accent: var(--cm-danger-fg);
+  --cm-checkbox-accent-hover: color-mix(in srgb, var(--cm-danger-fg) 84%, var(--foreground));
+  --cm-checkbox-foreground: var(--cm-surface-canvas);
+}
+
+@media (forced-colors: active) {
+  input[type="checkbox"] {
+    appearance: auto;
+    box-shadow: none;
+  }
+
+  input[type="checkbox"]::before {
+    content: none;
+  }
+}
+
+/* Base UI 用 data-highlighted 表示菜单当前项；避免焦点来源变化后叠加全局描边。 */
+[data-slot="context-menu-item"]:focus-visible {
+  outline: none;
+}
+
+/* 主按钮底色即 accent，焦点环要改用 accent-fg 才能在按下态底色上保持可见。 */
+.cm-button-primary:focus-visible {
+  outline-color: var(--cm-accent-fg);
+  outline-offset: 2px;
+}
+
+/* 更新弹窗空间紧凑，聚焦时只保留单层 1px 边框，避免通用 ring 与 outline 叠加。 */
+.cm-update-action:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.cm-update-action-outline:focus-visible {
+  border-color: var(--cm-accent);
+}
+
+.cm-update-action-primary:focus-visible {
+  border-color: var(--cm-accent-fg);
+}
+
+/* Ghostty 用 contenteditable 宿主 + abspos textarea 接键盘。原生 caret 必须
+   留在渲染容器内并透明，否则会闪到 Pane 标题栏。 */
+[data-terminal-renderer] {
+  position: relative;
+  caret-color: transparent;
+  cursor: text;
+}
+
+.cm-terminal-selection-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.cm-terminal-selection-row {
+  position: absolute;
+  background: var(--cm-terminal-selection-bg, #214283);
+  opacity: 0.58;
+  pointer-events: none;
+}
+
+.cm-terminal-selection-handle {
+  position: absolute;
+  z-index: 1;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--cm-surface-panel);
+  border-radius: 50%;
+  background: var(--cm-accent);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.cm-terminal-selection-magnifier {
+  position: absolute;
+  z-index: 35;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid var(--cm-accent);
+  border-radius: 18px;
+  background: var(--cm-terminal-magnifier-bg, #141414);
+  box-shadow:
+    0 8px 24px rgb(0 0 0 / 34%),
+    0 0 0 1px rgb(255 255 255 / 10%) inset;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  animation: cm-terminal-magnifier-in 90ms ease-out;
+  contain: layout paint style;
+}
+
+.cm-terminal-selection-magnifier-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.cm-terminal-selection-magnifier-target {
+  position: absolute;
+  top: var(--cm-terminal-magnifier-target-y, 50%);
+  left: var(--cm-terminal-magnifier-target-x, 50%);
+  width: var(--cm-terminal-magnifier-target-width, 12px);
+  height: var(--cm-terminal-magnifier-target-height, 24px);
+  border: 2px solid var(--cm-terminal-magnifier-target, var(--cm-accent));
+  border-radius: 3px;
+  background: rgb(255 255 255 / 10%);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 40%);
+  transform: translate(-50%, -50%);
+}
+
+@keyframes cm-terminal-magnifier-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cm-terminal-selection-magnifier {
+    animation: none;
+  }
+}
+
+.cm-terminal-selection-actions {
+  display: none;
+  gap: 1px;
+  padding: 2px;
+  border: 1px solid var(--cm-border);
+  border-radius: 8px;
+  background: var(--cm-surface-panel);
+  box-shadow: 0 3px 10px rgb(0 0 0 / 16%);
+}
+
+.cm-terminal-selection-actions .cm-button {
+  width: 42px;
+  min-width: 42px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-zinc-100);
+}
+
+.cm-terminal-selection-actions .cm-button:active {
+  background: var(--cm-surface-hover);
+  color: var(--color-zinc-100);
+}
+
+.cm-terminal-selection-actions .cm-button[aria-pressed="true"] {
+  background: var(--cm-surface-hover);
+  color: var(--color-zinc-100);
+}
+
+.cm-terminal-selection-actions .cm-button:disabled {
+  background: transparent;
+}
+
+.cm-terminal-clipboard-fallback {
+  background: rgb(0 0 0 / 24%);
+}
+
+.cm-terminal-clipboard-panel {
+  border: 1px solid var(--cm-border);
+  background: var(--cm-surface-panel);
+  color: var(--color-zinc-100);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 18%);
+}
+
+.cm-terminal-clipboard-textarea {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
+
+/* 与 xterm.js 一致：TUI 接管鼠标时显示箭头，退出 TUI 后恢复文本选择光标。 */
+[data-terminal-renderer][data-terminal-mouse-tracking] {
+  /* Ghostty 的链接检测会反复写入内联 cursor:text，需要覆盖其非 important 内联值。 */
+  cursor: default !important;
+}
+
+[data-terminal-renderer] :is(textarea, input) {
+  caret-color: transparent;
+}
+
+/* Ghostty/xterm 的内建滚动条由统一的 DOM 滚动条替代。轨道覆盖在最右侧，不改变 PTY 列数。 */
+[data-terminal-renderer] .xterm-scrollable-element > .scrollbar {
+  display: none !important;
+}
+
+.cm-terminal-scrollbar {
+  outline: none;
+}
+
+.cm-terminal-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-zinc-400) 58%, transparent);
+  transition: background-color 120ms ease;
+}
+
+.cm-terminal-scrollbar:is(:hover, :focus-visible) .cm-terminal-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-zinc-300) 78%, transparent);
+}
+
+.cm-terminal-scrollbar[aria-disabled="true"] {
+  opacity: 0.45;
+}
+
+@media (pointer: coarse) and (min-width: 640px) {
+  .cm-terminal-scrollbar {
+    width: 20px;
+  }
+
+  .cm-terminal-scrollbar-thumb {
+    right: 7px;
+    width: 6px;
+  }
+}
+
+/* 保持渲染器的 cols×cell 实际宽度；高度同样沿用 rows×cell 的内联尺寸。
+   不足一行/列的空间保留背景，避免拉伸画布后鼠标选字坐标偏移。 */
+[data-terminal-renderer] > canvas,
+[data-terminal-renderer] .xterm,
+[data-terminal-renderer] .xterm-screen,
+[data-terminal-renderer] .xterm-screen canvas {
+  display: block;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* 输入框仅用单层强调色边框表示焦点，避免 border 与内缩 outline 重叠绘制圆角。 */
+.cm-input:focus,
+.cm-input:focus-visible {
+  outline: none;
+  border-color: var(--cm-accent);
+}
+
+/* 文本输入控件统一由 CSS 绘制；背景只画到内边距，避免圆角抗锯齿处透出第二层底色。 */
+.cm-command-input {
+  appearance: none;
+  background-clip: padding-box;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+/* 目录弹层路径框聚焦时只保留一层弱强调边框；必须放在 layer 外覆盖全局 focus-visible。 */
+.cm-file-tree-path-input:focus,
+.cm-file-tree-path-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border-color: color-mix(in srgb, var(--cm-accent) 45%, var(--cm-border));
+}
+
+/* 命令搜索仅轻微加深单层边框，不叠加全局 focus-visible 描边。 */
+.cm-command-input:focus,
+.cm-command-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border-color: color-mix(in srgb, var(--color-zinc-700) 80%, var(--color-zinc-500));
+}
+
+::selection {
+  background: color-mix(in srgb, var(--cm-accent) 28%, transparent);
+}
+
+* {
+  scrollbar-color: var(--color-zinc-500) transparent;
+  scrollbar-width: thin;
+}
+
+/* 触屏快捷键和窗格标签保留横向滑动，但不显示滚动指示或边缘滚动光晕。
+   必须在 layer 外覆盖全局 scrollbar-width，WebKit 使用独立伪元素规则。 */
+.cm-terminal-touch-tablet-key-list,
+.cm-terminal-touch-primary-key-list,
+.cm-terminal-touch-secondary-key-list,
+.cm-terminal-pane-switcher {
+  scrollbar-width: none;
+  overscroll-behavior-x: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cm-terminal-touch-tablet-key-list::-webkit-scrollbar,
+.cm-terminal-touch-primary-key-list::-webkit-scrollbar,
+.cm-terminal-touch-secondary-key-list::-webkit-scrollbar,
+.cm-terminal-pane-switcher::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.cm-terminal-touch-phone-rows {
+  display: none;
+}
+
+/* 手机窗格标签与操作共用紧凑单行，尺寸与手机端常规控件保持一致。 */
+.cm-terminal-pane-toolbar.cm-terminal-phone-toolbar {
+  height: 30px;
+}
+
+.cm-terminal-pane-toolbar.cm-terminal-phone-toolbar .cm-icon-button {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+}
+
+/* 鼠标设备只在终端区域悬停时露出回底按钮；按钮本身收到键盘焦点时保持可见。
+   触屏设备没有可靠 hover，离开底部后直接显示。 */
+@media (hover: hover) and (pointer: fine) {
+  .cm-terminal-scroll-surface .cm-terminal-scroll-bottom {
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .cm-terminal-scroll-surface:hover .cm-terminal-scroll-bottom,
+  .cm-terminal-scroll-surface .cm-terminal-scroll-bottom:focus-visible {
+    pointer-events: auto;
+    opacity: 1;
+  }
+
+  .cm-terminal-scroll-surface:hover .cm-terminal-scroll-bottom:disabled {
+    opacity: 0.4;
+  }
+}
+
+@layer components {
+  .cm-panel {
+    @apply border border-zinc-800 bg-zinc-900;
+    border-color: var(--cm-border);
+    background: var(--cm-surface-panel);
+    border-radius: var(--cm-card-radius);
+    box-shadow: var(--cm-panel-shadow);
+  }
+
+  .cm-banner-danger {
+    border-color: var(--cm-danger-border);
+    background: var(--cm-danger-bg);
+    color: var(--cm-danger-fg);
+  }
+
+  .cm-banner-warning {
+    border-color: var(--cm-warning-border);
+    background: var(--cm-warning-bg);
+    color: var(--cm-warning-fg);
+  }
+
+  .cm-link {
+    color: var(--cm-link);
+  }
+
+  .cm-link:hover {
+    text-decoration: underline;
+  }
+
+  .cm-loading-text {
+    @apply text-xs text-zinc-500;
+    animation: cm-loading-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .cm-toolbar {
+    @apply flex min-h-9 items-center gap-2 border-b border-zinc-800 bg-zinc-900 px-3;
+  }
+
+  /* 按钮基准即最小尺寸（h-6 / text-[11px]），调用点不再叠加尺寸类。 */
+  .cm-button {
+    @apply inline-flex h-6 shrink-0 items-center justify-center gap-1.5 border border-zinc-700 bg-zinc-900 px-2 text-[11px] whitespace-nowrap text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-zinc-100 active:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .cm-button-primary {
+    @apply inline-flex h-6 shrink-0 items-center justify-center gap-1.5 border px-2 text-[11px] font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-40;
+    border-color: var(--cm-accent);
+    background: var(--cm-accent);
+    color: var(--cm-accent-fg);
+  }
+
+  .cm-button-primary:hover {
+    border-color: var(--cm-accent-hover);
+    background: var(--cm-accent-hover);
+  }
+
+  .cm-button-primary:active {
+    filter: brightness(90%);
+  }
+
+  .cm-button-danger {
+    @apply inline-flex h-6 shrink-0 items-center justify-center gap-1.5 border px-2 text-[11px] whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-40;
+    border-color: var(--cm-danger-border);
+    color: var(--cm-danger-fg);
+  }
+
+  .cm-button-danger:hover {
+    background: var(--cm-danger-bg);
+  }
+
+  .cm-button-warning {
+    @apply inline-flex h-6 shrink-0 items-center justify-center gap-1.5 border px-2 text-[11px] whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-40;
+    border-color: var(--cm-warning-border);
+    background: var(--cm-warning-bg);
+    color: var(--cm-warning-fg);
+  }
+
+  .cm-icon-button {
+    @apply inline-flex h-6 w-6 shrink-0 items-center justify-center text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-100 active:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .cm-terminal-pane-toolbar {
+    height: 18px;
+  }
+
+  .cm-terminal-pane-toolbar .cm-icon-button {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* 指针精确的设备用真实键盘输入，这排触屏按键（含软键盘开关）不出现。 */
+  .cm-terminal-touch-toolbar {
+    display: none;
+  }
+
+  .cm-input {
+    @apply h-8 w-full border px-2.5 text-sm text-zinc-100 placeholder:text-zinc-600;
+    appearance: none;
+    border-color: var(--cm-border);
+    border-radius: var(--cm-button-radius);
+    background-color: var(--cm-input-bg);
+    background-clip: padding-box;
+    transition:
+      border-color 120ms ease,
+      background-color 120ms ease;
+  }
+
+  select.cm-input {
+    appearance: auto;
+  }
+
+  .cm-file-tree-path-input {
+    appearance: none;
+    height: 24px;
+    border: 1px solid var(--cm-border);
+    border-radius: var(--cm-button-radius);
+    background: var(--cm-input-bg);
+    background-clip: padding-box;
+    padding: 0 6px;
+    color: var(--foreground);
+    font-size: 11px;
+    line-height: 1;
+    outline: none;
+    transition:
+      border-color 120ms ease,
+      background-color 120ms ease;
+  }
+
+  .cm-file-tree-path-input:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .cm-menu {
+    @apply absolute z-50 min-w-44 overflow-hidden rounded-md border border-zinc-800 bg-zinc-900 py-1 text-[10px] leading-4 text-zinc-300;
+    box-shadow: var(--cm-shadow);
+  }
+
+  .cm-menu-item {
+    @apply flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-zinc-800 hover:text-zinc-100;
+  }
+}
+
+@media (pointer: coarse) {
+  .cm-button,
+  .cm-button-primary,
+  .cm-button-danger,
+  .cm-button-warning,
+  .cm-command-trigger,
+  .cm-icon-button,
+  .cm-input,
+  .cm-touch-target,
+  .cm-touch-square,
+  [data-slot="button"] {
+    min-height: 40px;
+  }
+
+  /* iOS 对小于 16px 的输入控件聚焦时自动放大页面，且固定外壳下无法缩回；
+     触屏设备统一抬到 16px。终端内隐藏输入框不可见，抬字号不影响渲染。 */
+  .cm-input,
+  .cm-command-input,
+  [data-terminal-renderer],
+  [data-terminal-renderer] :is(textarea, input) {
+    font-size: 16px;
+  }
+
+  /* 终端 canvas 不是可滚动元素，纵向拖动由 terminal-touch 转成滚轮；浏览器只保留
+     捏合缩放，避免整页滚动或下拉刷新抢走手势。 */
+  [data-terminal-renderer] {
+    touch-action: pinch-zoom;
+    overscroll-behavior: contain;
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+
+  .cm-terminal-selection-actions {
+    display: flex;
+  }
+
+  .cm-terminal-selection-actions .cm-button {
+    height: 24px;
+    min-height: 24px;
+    gap: 3px;
+    padding: 0 3px;
+    font-size: 10px;
+  }
+
+  .cm-icon-button {
+    min-width: 40px;
+  }
+
+  /* 触屏设备（手机与平板）必须能显式呼出软键盘，宽度不再决定这排按键是否存在。 */
+  .cm-terminal-touch-toolbar {
+    display: flex;
+  }
+
+  /* Compact terminal controls still need comfortable touch targets. */
+  .cm-terminal-pane-toolbar {
+    height: 34px;
+  }
+
+  .cm-terminal-pane-toolbar .cm-icon-button {
+    min-width: 32px;
+    min-height: 32px;
+    width: 32px;
+    height: 32px;
+  }
+
+  .cm-touch-square {
+    min-width: 40px;
+  }
+
+  [role="menuitem"],
+  [role="menuitemradio"],
+  [role="option"] {
+    min-height: 40px;
+  }
+
+  [role="treeitem"],
+  .cm-file-tree-item {
+    min-height: 40px;
+  }
+}
+
+/* 项目创建方式切换只滚动字段区，弹窗与操作区保持原位。 */
+.cm-new-project-dialog {
+  display: flex;
+  height: min(680px, calc(var(--cm-viewport-height, 100dvh) - 2rem));
+  max-height: calc(var(--cm-viewport-height, 100dvh) - 2rem);
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+}
+
+.cm-dialog-content.cm-new-project-dialog {
+  max-height: calc(var(--cm-viewport-height, 100dvh) - 2rem);
+}
+
+.cm-new-project-tabs {
+  gap: 2px;
+  border: 1px solid var(--cm-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--cm-surface-workspace) 82%, var(--cm-border));
+}
+
+.cm-new-project-tab {
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 8px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-weight: 500;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.cm-new-project-tab[aria-pressed="true"] {
+  background: var(--cm-surface-panel);
+  color: var(--foreground);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
+}
+
+.cm-new-project-tab:hover:not([aria-pressed="true"]) {
+  background: var(--cm-surface-hover);
+  color: var(--foreground);
+}
+
+.cm-new-project-tab:focus-visible {
+  outline: 2px solid var(--cm-accent);
+  outline-offset: 2px;
+}
+
+.cm-new-project-fields {
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.cm-new-project-fields label > span {
+  margin-bottom: 4px;
+  font-size: 10px;
+}
+
+.cm-new-project-private-toggle {
+  font-size: 10px;
+}
+
+html .cm-new-project-dialog .cm-new-project-input {
+  height: 32px;
+  min-height: 32px;
+  padding-right: 8px;
+  padding-left: 8px;
+  font-size: 11px;
+}
+
+@media (pointer: coarse) {
+  .cm-new-project-tab {
+    height: 32px;
+  }
+
+  html .cm-new-project-dialog .cm-new-project-input {
+    height: 34px;
+    min-height: 34px;
+    font-size: 11px;
+  }
+
+  /* iPhone 聚焦小字号输入框会放大页面，仅在该环境恢复安全字号。 */
+  @supports (-webkit-touch-callout: none) {
+    html .cm-new-project-dialog .cm-new-project-input {
+      font-size: 16px;
+    }
+  }
+}
+
+@media (max-width: 639px) {
+  .cm-dialog-content.cm-new-project-dialog {
+    top: calc(var(--cm-viewport-offset-top, 0px) + 1rem);
+    height: calc(var(--cm-viewport-height, 100dvh) - 2rem);
+    translate: -50% 0 !important;
+    transform: none;
+  }
+}
+
+/* 轻量代码编辑器只用于手机：固定小字号，缩短两排工具栏，不影响 Monaco。 */
+@media (max-width: 639px) {
+  .cm-mobile-code-editor-text {
+    padding: 8px;
+    font-size: 10px;
+    line-height: 15px;
+  }
+
+  .cm-mobile-code-editor-toolbar {
+    gap: 2px;
+    padding: 2px 4px;
+    scrollbar-width: none;
+  }
+
+  .cm-mobile-code-editor-search {
+    min-width: 96px;
+    gap: 2px;
+    padding: 0 5px;
+    border-radius: 4px;
+  }
+
+  .cm-mobile-code-editor-search input {
+    height: 24px;
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  html
+    :is(.cm-mobile-code-editor-toolbar, .cm-file-editor-toolbar, .cm-file-tree-toolbar)
+    :is(.cm-button, .cm-icon-button) {
+    height: 24px;
+    min-height: 24px;
+    gap: 2px;
+    padding: 0 4px;
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  html :is(.cm-mobile-code-editor-toolbar, .cm-file-editor-toolbar) .cm-icon-button {
+    width: 24px;
+    min-width: 24px;
+  }
+
+  :is(.cm-mobile-code-editor-toolbar, .cm-file-editor-toolbar, .cm-file-tree-toolbar) svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+  }
+
+  .cm-file-editor-toolbar {
+    min-height: 28px;
+    gap: 4px;
+    padding: 2px 4px;
+    font-size: 10px;
+  }
+
+  .cm-file-editor-toolbar > div {
+    gap: 4px;
+  }
+
+  .cm-file-tree-toolbar {
+    min-height: 28px;
+    gap: 2px;
+    padding: 2px 4px;
+    font-size: 10px;
+  }
+
+  html .cm-file-tree-toolbar .cm-button {
+    width: 24px;
+    min-width: 24px;
+    border-radius: 4px;
+  }
+
+  /* iPhone 原生输入控件保留安全字号，避免聚焦自动放大；工具栏尺寸不变。 */
+  @supports (-webkit-touch-callout: none) {
+    .cm-mobile-code-editor-text {
+      font-size: 16px;
+      line-height: 24px;
+    }
+
+    .cm-mobile-code-editor-search input,
+    .cm-file-tree-path-input {
+      font-size: 16px;
+    }
+  }
+}
+
+/* 手机顶部视图切换保持紧凑；应用实例标签不受影响。 */
+@media (max-width: 639px) {
+  .cm-application-view-switcher {
+    gap: 4px;
+    padding: 1px 4px;
+  }
+
+  html .cm-application-view-switcher .cm-application-view-tab {
+    height: 24px;
+    min-height: 24px;
+    gap: 1px;
+    padding: 0 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1;
+  }
+
+  .cm-application-instance-tabs {
+    min-height: 20px;
+    gap: 2px;
+    padding: 1px 4px;
+    scrollbar-width: none;
+  }
+
+  .cm-application-instance-tabs::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  .cm-application-instance-tab-group {
+    gap: 1px;
+  }
+
+  html .cm-application-instance-tabs .cm-application-instance-tab {
+    height: 18px;
+    min-height: 18px;
+    gap: 1px;
+    padding: 0 2px;
+    border-radius: 4px;
+    font-size: 9px;
+    line-height: 1;
+  }
+
+  html
+    .cm-application-instance-tabs
+    :is(.cm-application-catalog-tab, .cm-application-instance-close) {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    min-height: 18px;
+    border-radius: 4px;
+    font-size: 11px;
+    line-height: 1;
+  }
+
+  .cm-application-instance-tabs svg {
+    width: 9px;
+    height: 9px;
+  }
+
+  html .cm-terminal-connection-action {
+    height: 18px;
+    min-height: 18px;
+    padding: 0 2px;
+    border-radius: 4px;
+    font-size: 9px;
+    line-height: 1;
+  }
+}
+
+/* 手机内容控件与终端快捷键单独紧凑化，不缩小平板。 */
+@media (pointer: coarse) and (max-width: 639px) {
+  /* 手机内容区按钮保持紧凑，输入框保留 32px 高度。 */
+  .cm-button,
+  .cm-button-primary,
+  .cm-button-danger,
+  .cm-button-warning,
+  .cm-icon-button {
+    height: 24px;
+    min-height: 24px;
+  }
+
+  [data-slot="button"] {
+    min-height: 24px;
+  }
+
+  .cm-input {
+    min-height: 32px;
+  }
+
+  .cm-icon-button {
+    width: 24px;
+    min-width: 24px;
+  }
+
+  .cm-settings-menu-item {
+    height: 24px;
+    min-height: 24px;
+  }
+
+  .cm-mobile-compact-input {
+    font-size: 12px;
+  }
+
+  /* iPhone 对小于 16px 的表单控件会在聚焦时放大页面，Safari 保留安全字号。 */
+  @supports (-webkit-touch-callout: none) {
+    .cm-mobile-compact-input {
+      font-size: 16px;
+    }
+  }
+
+  .cm-terminal-touch-toolbar {
+    order: 1;
+    gap: 2px;
+    padding: 1px 4px;
+    border-top-width: 1px;
+    border-bottom-width: 0;
+  }
+
+  .cm-terminal-touch-tablet-row {
+    display: none;
+  }
+
+  .cm-terminal-touch-phone-rows {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    flex: none;
+    gap: 2px;
+  }
+
+  .cm-terminal-touch-primary-key-list,
+  .cm-terminal-touch-secondary-key-list {
+    gap: 2px;
+  }
+
+  .cm-terminal-touch-toolbar .cm-button {
+    height: 24px;
+    min-height: 24px;
+    min-width: 24px;
+    gap: 2px;
+    padding: 0 3px;
+    border-radius: 4px;
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  .cm-terminal-touch-toolbar .cm-terminal-keyboard-toggle {
+    width: 44px;
+  }
+
+  /* Shift 累计加宽 16px；五个单字符键等量分摊，后续方向键与键盘位置保持不变。 */
+  .cm-terminal-touch-toolbar .cm-terminal-shift-toggle {
+    width: 44px;
+    min-width: 44px;
+  }
+
+  .cm-terminal-touch-toolbar .cm-terminal-key-symbol {
+    width: 20.8px;
+    min-width: 20.8px;
+  }
+
+  /* 固定 ↑ 之前的文本键宽度，避免不同系统字体度量造成两排箭头横向漂移。 */
+  .cm-terminal-touch-toolbar .cm-terminal-key-interrupt {
+    width: 37px;
+    min-width: 37px;
+  }
+
+  .cm-terminal-touch-toolbar .cm-terminal-key-at {
+    width: 20px;
+    min-width: 20px;
+  }
+
+  .cm-terminal-touch-toolbar .cm-terminal-key-paste {
+    width: 40px;
+    min-width: 40px;
+  }
+
+  .cm-terminal-touch-toolbar .cm-terminal-key-home {
+    width: 34px;
+    min-width: 34px;
+  }
+
+  .cm-terminal-touch-toolbar .cm-terminal-key-backspace {
+    width: 34px;
+    min-width: 34px;
+  }
+
+  /* 仅吸收正的剩余空间；shrink-0 保证小屏溢出时仍横向滚动。 */
+  .cm-terminal-touch-toolbar .cm-terminal-key-enter,
+  .cm-terminal-touch-secondary-key-list .cm-terminal-keyboard-toggle {
+    flex-grow: 1;
+  }
+
+  /* 方向键按第一排宽度校准；PG DW 等量收窄，保持键盘位置不变。 */
+  .cm-terminal-touch-toolbar .cm-terminal-key-left {
+    width: 28px;
+    min-width: 28px;
+  }
+
+  .cm-terminal-touch-toolbar .cm-terminal-key-down {
+    width: 26px;
+    min-width: 26px;
+  }
+
+  .cm-terminal-touch-toolbar .cm-terminal-key-page-down {
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .cm-terminal-touch-toolbar svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+  }
+
+  .cm-workbench-browser-toolbar {
+    min-height: 0;
+    gap: 2px;
+    padding: 2px;
+  }
+
+  html .cm-workbench-browser-toolbar :is(.cm-input, .cm-button-primary, .cm-icon-button) {
+    height: 28px;
+    min-height: 28px;
+  }
+
+  html .cm-workbench-browser-toolbar .cm-input {
+    padding-right: 8px;
+    padding-left: 8px;
+    font-size: 12px;
+  }
+
+  html .cm-workbench-browser-toolbar .cm-icon-button {
+    width: 28px;
+    min-width: 28px;
+  }
+
+  /* iPhone 聚焦小字号表单会缩放页面，仅恢复安全字号，不放大控件。 */
+  @supports (-webkit-touch-callout: none) {
+    html .cm-workbench-browser-toolbar .cm-input {
+      font-size: 16px;
+    }
+  }
+
+  .cm-terminal-scroll-bottom {
+    height: 28px;
+    min-height: 28px;
+    gap: 4px;
+    padding: 0 8px;
+    font-size: 10px;
+    line-height: 1;
+  }
+}
+
+html.light .cm-input {
+  background-color: var(--cm-input-bg);
+}
+
+html.light .cm-toolbar,
+html.light .cm-menu {
+  background: var(--cm-surface-panel);
+}
+
+html.light .cm-button {
+  background: var(--cm-surface-panel);
+}
+
+/* html.light 的无层背景规则会压住 utilities 层的 hover/active，浅色主题的按压反馈单列。 */
+html.light .cm-button:active {
+  background: var(--cm-surface-hover);
+}
+
+/* 键盘开关保持同一套按钮尺寸与字重，仅用浅色选中态提示状态。
+   不叠加 primary，避免浅色主题的 cm-button 背景覆盖造成白底浅字。 */
+.cm-terminal-touch-toolbar .cm-terminal-keyboard-toggle[aria-pressed="true"],
+.cm-terminal-touch-toolbar .cm-terminal-keyboard-toggle[aria-pressed="true"]:is(:hover, :active),
+.cm-terminal-touch-toolbar .cm-terminal-shift-toggle[aria-pressed="true"],
+.cm-terminal-touch-toolbar .cm-terminal-shift-toggle[aria-pressed="true"]:is(:hover, :active) {
+  border-color: var(--cm-accent);
+  background: var(--cm-accent-muted);
+  color: var(--cm-accent);
+}
+
+/* 手机快捷键栏用轻量色块区分点击区域，减少紧凑布局中的边框噪声。 */
+@media (pointer: coarse) and (max-width: 639px) {
+  html .cm-terminal-touch-toolbar .cm-button {
+    border-width: 0;
+    background: color-mix(in srgb, var(--cm-surface-panel) 82%, var(--cm-border));
+    box-shadow: none;
+  }
+
+  html .cm-terminal-touch-toolbar .cm-button:active {
+    background: var(--cm-surface-hover);
+  }
+
+  .cm-terminal-touch-toolbar .cm-terminal-keyboard-toggle[aria-pressed="true"],
+  .cm-terminal-touch-toolbar .cm-terminal-keyboard-toggle[aria-pressed="true"]:is(:hover, :active),
+  .cm-terminal-touch-toolbar .cm-terminal-shift-toggle[aria-pressed="true"],
+  .cm-terminal-touch-toolbar .cm-terminal-shift-toggle[aria-pressed="true"]:is(:hover, :active) {
+    border-color: transparent;
+    background: var(--cm-accent-muted);
+    color: var(--cm-accent);
+  }
+}
+
+/* 手机设置页的返回入口使用轻量导航样式，不与页面操作争抢视觉层级。 */
+@media (max-width: 639px) {
+  .cm-settings-back-link {
+    border-color: var(--cm-border);
+    background: var(--cm-surface-panel);
+    color: var(--color-zinc-300);
+    filter: none;
+  }
+
+  .cm-settings-back-link:is(:hover, :active) {
+    background: var(--cm-surface-hover);
+  }
+
+  .cm-settings-back-link:focus-visible {
+    outline-color: var(--cm-accent);
+  }
+}
+
+.cm-markdown {
+  color: var(--color-zinc-300);
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.cm-markdown :is(h1, h2, h3, h4) {
+  margin: 1em 0 0.5em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.cm-markdown h1 {
+  font-size: 1.8em;
+}
+.cm-markdown h2 {
+  font-size: 1.5em;
+}
+.cm-markdown h3 {
+  font-size: 1.2em;
+}
+.cm-markdown :is(p, ul, ol, pre, blockquote, table) {
+  margin: 0.75em 0;
+}
+.cm-markdown ul {
+  list-style: disc;
+  padding-left: 1.5em;
+}
+.cm-markdown ol {
+  list-style: decimal;
+  padding-left: 1.5em;
+}
+.cm-markdown a {
+  color: var(--cm-accent);
+  text-decoration: underline;
+}
+.cm-markdown pre {
+  overflow: auto;
+  padding: 0.75em;
+  border-radius: 4px;
+  background: var(--cm-surface-panel);
+}
+.cm-markdown code {
+  font-family: var(--font-geist-mono), monospace;
+}
+.cm-markdown blockquote {
+  border-left: 2px solid var(--cm-border);
+  padding-left: 1em;
+  color: var(--color-zinc-500);
+}
+.cm-markdown table {
+  display: block;
+  max-width: 100%;
+  overflow: auto;
+  border-collapse: collapse;
+}
+.cm-markdown :is(th, td) {
+  border: 1px solid var(--cm-border);
+  padding: 0.35em 0.65em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+.cm-rescue-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(900px, calc(100vw - 2rem));
+  max-width: none;
+  height: min(650px, calc(var(--cm-viewport-height, 100dvh) - 2rem));
+  max-height: calc(var(--cm-viewport-height, 100dvh) - 2rem);
+  gap: 8px;
+}
+.cm-rescue-keys {
+  display: none;
+}
+.cm-button.cm-rescue-retry {
+  height: 24px;
+  min-height: 24px;
+  padding: 0 5px;
+  font-size: 10px;
+}
+.cm-rescue-terminal {
+  background: var(--cm-terminal-bg);
+}
+@media (max-width: 639px) {
+  .cm-rescue-keys {
+    display: flex;
+  }
+}
+@media (max-width: 767px) {
+  .cm-dialog-content.cm-rescue-dialog {
+    top: var(--cm-viewport-offset-top, 0px);
+    left: 0;
+    transform: none;
+    animation: none;
+    width: 100%;
+    height: var(--cm-viewport-height, 100dvh);
+    max-height: var(--cm-viewport-height, 100dvh);
+    border-radius: 0;
+    padding: 8px;
+  }
+}

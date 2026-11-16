@@ -1,0 +1,33 @@
+[package]
+name = "renrencodex-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+client-native = { path = "../../../crates/client-native" }
+serde_json.workspace = true
+tauri = { workspace = true, features = ["tray-icon", "unstable"] }
+tauri-plugin-clipboard-manager.workspace = true
+tauri-plugin-deep-link.workspace = true
+tauri-plugin-opener.workspace = true
+tauri-plugin-single-instance.workspace = true
+tauri-plugin-updater.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+dbus = { version = "0.9", features = ["vendored"] }
+keyring = { version = "3.6", default-features = false, features = ["sync-secret-service", "crypto-rust"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3.6", default-features = false, features = ["apple-native"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3.6", default-features = false, features = ["windows-native"] }
+webview2-com = "0.38"
+windows = { version = "0.61", features = ["Win32_Graphics_Dwm"] }

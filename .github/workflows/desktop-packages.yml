@@ -1,0 +1,301 @@
+name: Desktop Packages
+run-name: Desktop Packages · main
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-packages-main
+  cancel-in-progress: false
+
+jobs:
+  resolve_source:
+    name: Resolve main source
+    if: ${{ vars.ENABLE_PUBLIC_PACKAGE_BUILD == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      commit_sha: ${{ steps.source.outputs.commit_sha }}
+    steps:
+      - name: Check out build source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+
+      - id: source
+        name: Pin main commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          commit_sha="$(git rev-parse HEAD)"
+          test -n "$commit_sha"
+          echo "commit_sha=$commit_sha" >> "$GITHUB_OUTPUT"
+          echo "Building main commit \`$commit_sha\`." >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    name: Build ${{ matrix.name }} packages
+    needs: resolve_source
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-latest
+            artifact: windows-x64
+            bundles: nsis,msi
+            config: ""
+          - name: Linux x64
+            os: ubuntu-24.04
+            artifact: linux-x64
+            bundles: deb,rpm,appimage
+            config: --config ../../packaging/tauri.linux.conf.json
+    env:
+      VITE_API_BASE_URL: https://renrencodex.com
+      VITE_WEB_BASE_URL: https://renrencodex.com
+      VITE_GATEWAY_WS_URL: wss://renrencodex.com/gateway
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.resolve_source.outputs.commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install Tauri system dependencies
+        if: runner.os == 'Linux'
+        run: >-
+          sudo apt-get update && sudo apt-get install -y
+          libwebkit2gtk-4.1-dev
+          build-essential
+          curl
+          wget
+          file
+          libxdo-dev
+          libssl-dev
+          libayatana-appindicator3-dev
+          librsvg2-dev
+          patchelf
+          rpm
+
+      - name: Verify public snapshot gate
+        run: bun scripts/sync-from-upstream.ts --public-ready
+
+      - name: Install JavaScript dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Use stable Rust
+        run: rustup default stable
+
+      - name: Verify desktop TypeScript
+        run: bun run --cwd apps/desktop typecheck
+
+      - name: Build desktop packages
+        run: >-
+          bun run --cwd apps/desktop tauri build --ci
+          --bundles ${{ matrix.bundles }} ${{ matrix.config }}
+
+      - name: Verify Windows packages
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "target/release/renrencodex-desktop.exe")) {
+            throw "Windows executable was not produced"
+          }
+          if (@(Get-ChildItem "target/release/bundle/msi/*.msi").Count -eq 0) {
+            throw "MSI installer was not produced"
+          }
+          if (@(Get-ChildItem "target/release/bundle/nsis/*-setup.exe").Count -eq 0) {
+            throw "NSIS installer was not produced"
+          }
+
+      - name: Verify Linux packages
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          test -x target/release/renrencodex-desktop
+          compgen -G 'target/release/bundle/deb/*.deb' > /dev/null
+          compgen -G 'target/release/bundle/rpm/*.rpm' > /dev/null
+          compgen -G 'target/release/bundle/appimage/*.AppImage' > /dev/null
+
+      - name: Upload Windows packages
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: renrencodex-${{ matrix.artifact }}-${{ needs.resolve_source.outputs.commit_sha }}
+          path: |
+            target/release/renrencodex-desktop.exe
+            target/release/bundle/msi/*.msi
+            target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Linux packages
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: renrencodex-${{ matrix.artifact }}-${{ needs.resolve_source.outputs.commit_sha }}
+          path: |
+            target/release/renrencodex-desktop
+            target/release/bundle/deb/*.deb
+            target/release/bundle/rpm/*.rpm
+            target/release/bundle/appimage/*.AppImage
+          if-no-files-found: error
+          retention-days: 14
+
+  build-macos:
+    name: Build macOS Universal package
+    needs: resolve_source
+    runs-on: macos-15
+    timeout-minutes: 90
+    env:
+      APPLE_SIGNING_IDENTITY: "-"
+      VITE_API_BASE_URL: https://renrencodex.com
+      VITE_WEB_BASE_URL: https://renrencodex.com
+      VITE_GATEWAY_WS_URL: wss://renrencodex.com/gateway
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.resolve_source.outputs.commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Verify public snapshot gate
+        run: bun scripts/sync-from-upstream.ts --public-ready
+
+      - name: Install JavaScript dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Rust targets
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup default stable
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Verify desktop TypeScript
+        run: bun run --cwd apps/desktop typecheck
+
+      - name: Build ad-hoc signed Universal packages
+        run: >-
+          bun run --cwd apps/desktop tauri build --ci
+          --target universal-apple-darwin
+          --bundles app,dmg
+
+      - name: Verify and prepare packages
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          bundle_root="target/universal-apple-darwin/release/bundle"
+          shopt -s nullglob
+          app_paths=("$bundle_root/macos/"*.app)
+          dmg_paths=("$bundle_root/dmg/"*.dmg)
+          if [[ "${#app_paths[@]}" != "1" || "${#dmg_paths[@]}" != "1" ]]; then
+            echo "expected exactly one app and one DMG, found app=${#app_paths[@]} dmg=${#dmg_paths[@]}" >&2
+            exit 1
+          fi
+
+          app_path="${app_paths[0]}"
+          dmg_path="${dmg_paths[0]}"
+
+          assert_universal_app() {
+            local candidate="$1"
+            local executable_name
+            local executable_path
+            local architectures
+            executable_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$candidate/Contents/Info.plist")"
+            executable_path="$candidate/Contents/MacOS/$executable_name"
+            test -x "$executable_path"
+            architectures="$(lipo -archs "$executable_path")"
+            if [[ " $architectures " != *" arm64 "* || " $architectures " != *" x86_64 "* ]]; then
+              echo "application is not Universal: $architectures" >&2
+              exit 1
+            fi
+          }
+
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+          codesign_info="$(codesign --display --verbose=4 "$app_path" 2>&1)"
+          if ! grep -Fq 'Signature=adhoc' <<<"$codesign_info"; then
+            echo "application is not ad-hoc signed" >&2
+            exit 1
+          fi
+          minimum_system_version="$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$app_path/Contents/Info.plist")"
+          if [[ "$minimum_system_version" != "12.0" ]]; then
+            echo "unexpected minimum macOS version: $minimum_system_version" >&2
+            exit 1
+          fi
+          assert_universal_app "$app_path"
+          hdiutil verify "$dmg_path"
+
+          mount_dir="$(mktemp -d "$RUNNER_TEMP/renrencodex-dmg-mount.XXXXXX")"
+          copy_dir="$(mktemp -d "$RUNNER_TEMP/renrencodex-dmg-copy.XXXXXX")"
+          mounted=0
+          cleanup() {
+            if [[ "$mounted" == "1" ]]; then
+              hdiutil detach "$mount_dir" >/dev/null || true
+            fi
+            rm -rf "$mount_dir" "$copy_dir"
+          }
+          trap cleanup EXIT
+
+          hdiutil attach "$dmg_path" -readonly -nobrowse -mountpoint "$mount_dir" >/dev/null
+          mounted=1
+          mounted_apps=("$mount_dir/"*.app)
+          if [[ "${#mounted_apps[@]}" != "1" ]]; then
+            echo "expected exactly one application in the DMG, found ${#mounted_apps[@]}" >&2
+            exit 1
+          fi
+          mounted_app="${mounted_apps[0]}"
+          copied_app="$copy_dir/$(basename "$mounted_app")"
+          ditto "$mounted_app" "$copied_app"
+          codesign --verify --deep --strict --verbose=2 "$copied_app"
+          assert_universal_app "$copied_app"
+          hdiutil detach "$mount_dir" >/dev/null
+          mounted=0
+          cleanup
+          trap - EXIT
+
+          version="$(bun -e 'const value = (await Bun.file("apps/desktop/package.json").json()).version; if (typeof value !== "string") process.exit(1); console.log(value)')"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "desktop version must be stable SemVer: $version" >&2
+            exit 1
+          fi
+          output_dir="target/desktop-macos-artifact"
+          mkdir "$output_dir"
+          dmg_name="renrencodex-desktop-$version-universal.dmg"
+          app_zip_name="renrencodex-desktop-$version-universal.app.zip"
+          cp "$dmg_path" "$output_dir/$dmg_name"
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" "$output_dir/$app_zip_name"
+          (
+            cd "$output_dir"
+            shasum -a 256 "$dmg_name" "$app_zip_name" > SHA256SUMS
+            shasum -a 256 -c SHA256SUMS
+          )
+
+      - name: Upload macOS Universal packages
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: renrencodex-macos-universal-${{ needs.resolve_source.outputs.commit_sha }}
+          path: target/desktop-macos-artifact/*
+          if-no-files-found: error
+          retention-days: 14

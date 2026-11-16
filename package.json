@@ -1,0 +1,46 @@
+{
+  "name": "renrencodex-desktop",
+  "version": "0.0.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.2",
+  "engines": {
+    "bun": "1.4.2"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "sync:upstream": "bun run scripts/sync-from-upstream.ts",
+    "sync:check": "bun run scripts/sync-from-upstream.ts --check",
+    "publication:check": "bun run scripts/sync-from-upstream.ts --ci",
+    "public:ready": "bun run scripts/sync-from-upstream.ts --public-ready",
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
+    "typecheck": "bun run --filter \"*\" typecheck",
+    "test": "bun test --path-ignore-patterns='packages/native-client-ui/src/workbench-parity.test.ts' apps/desktop packages scripts",
+    "build": "bun run --cwd apps/desktop build",
+    "desktop:dev": "bun run --cwd apps/desktop dev",
+    "desktop:build": "bun run --cwd apps/desktop tauri build",
+    "generate:client-protocol": "cargo run -q -p client-protocol --bin generate-types && prettier --write packages/platform-api/src/generated/client-protocol.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.62.1",
+    "@types/bun": "1.4.2",
+    "eslint": "^10.8.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "^3.9.6",
+    "typescript": "^5",
+    "typescript-eslint": "^8.67.0"
+  },
+  "overrides": {
+    "dompurify": "3.4.18",
+    "esbuild": "0.28.2",
+    "sharp": "0.35.5",
+    "source-map-js": "1.2.2"
+  }
+}

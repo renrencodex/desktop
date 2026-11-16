@@ -1,0 +1,22 @@
+{
+  "name": "@cloud-machine/client-contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Public client/server wire contracts for Web, Desktop and Mobile",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./cmp": "./src/cmp.ts",
+    "./cli-store": "./src/cli-store.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  }
+}

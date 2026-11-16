@@ -1,0 +1,21 @@
+{
+  "family": "Iosevka Term",
+  "version": "34.9.1",
+  "license": "SIL Open Font License 1.1",
+  "licenseFile": "LICENSE.md",
+  "upstreamRelease": "https://github.com/be5invis/Iosevka/releases/tag/v34.9.1",
+  "archive": "PkgWebFont-IosevkaTerm-34.9.1.zip",
+  "archiveSha256": "c1d584fd6b07ff120148334f4e7307612df6c657ff4bb60b8ae0f6802ea1aed4",
+  "files": [
+    {
+      "source": "IosevkaTerm-Regular.woff2",
+      "publicName": "IosevkaTerm-34.9.1-Regular.woff2",
+      "sha256": "90ed239f75bbd691abf0c882bf3be78457c5e8064cc2cf03e393316e57b35086"
+    },
+    {
+      "source": "IosevkaTerm-Bold.woff2",
+      "publicName": "IosevkaTerm-34.9.1-Bold.woff2",
+      "sha256": "62c470c84aa49c1f01a94fc9e41eff9f2f859ed684b0a6769c72453d0ee0eca2"
+    }
+  ]
+}

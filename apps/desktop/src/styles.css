@@ -1,0 +1,212 @@
+@font-face {
+  font-family: "Geist Desktop";
+  src: url("/fonts/Geist-Variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono Desktop";
+  src: url("/fonts/GeistMono-Variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root {
+  --font-geist-sans: "Geist Desktop";
+  --font-geist-mono: "Geist Mono Desktop";
+  font-family:
+    var(--font-geist-sans),
+    "Noto Sans SC",
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "PingFang SC",
+    "Microsoft YaHei",
+    sans-serif;
+}
+
+html,
+body,
+#root,
+.desktop-app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+.desktop-app {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  color: var(--color-zinc-100);
+  background: var(--cm-surface-canvas);
+}
+
+.desktop-titlebar {
+  z-index: 100;
+  display: flex;
+  height: 36px;
+  flex: 0 0 36px;
+  align-items: center;
+  padding-left: 12px;
+  user-select: none;
+  border-bottom: 1px solid var(--cm-border);
+  background: var(--cm-surface-titlebar);
+  font-size: 12px;
+}
+
+.desktop-title {
+  flex: 1;
+}
+
+.desktop-window-controls {
+  display: flex;
+  height: 100%;
+  align-self: stretch;
+  margin-right: -0.5rem;
+  margin-left: 8px;
+}
+
+.desktop-window-controls button {
+  display: grid;
+  width: 46px;
+  height: 100%;
+  min-width: 46px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 0;
+  color: var(--color-zinc-400);
+  background: transparent;
+  font: inherit;
+  cursor: default;
+}
+
+.desktop-window-controls button:hover {
+  color: var(--color-zinc-100);
+  background: var(--cm-surface-hover);
+}
+
+.desktop-window-controls .desktop-close:hover {
+  color: #fff;
+  background: #c42b1c;
+}
+
+.desktop-centered {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  place-items: center;
+  padding: 32px;
+  background:
+    radial-gradient(circle at 20% 0%, var(--cm-glow), transparent 35%), var(--cm-surface-canvas);
+}
+
+.desktop-card {
+  width: min(440px, 100%);
+  padding: 34px;
+  border: 1px solid var(--cm-border);
+  border-radius: var(--cm-card-radius);
+  background: var(--cm-surface-panel);
+  box-shadow: var(--cm-shadow);
+  text-align: center;
+}
+
+.desktop-card h1 {
+  margin: 18px 0 8px;
+  font-size: 22px;
+}
+
+.desktop-card .desktop-session-restoring-title {
+  font-size: 16px;
+}
+
+.desktop-card p {
+  margin: 0 0 22px;
+  color: var(--color-zinc-400);
+  line-height: 1.6;
+}
+
+.desktop-auth-logo {
+  flex-direction: column;
+  gap: 10px;
+  justify-content: center;
+  color: var(--color-zinc-100);
+  font-size: 20px;
+}
+
+.desktop-auth-logo .brand-logo-image {
+  width: 112px;
+  height: 112px;
+}
+
+.desktop-auth-logo .brand-logo-wordmark {
+  display: none;
+}
+
+.desktop-primary {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--cm-accent);
+  border-radius: var(--cm-button-radius);
+  color: var(--cm-accent-fg);
+  background: var(--cm-accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.desktop-primary:hover {
+  background: var(--cm-accent-hover);
+}
+
+.desktop-primary:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.desktop-notice {
+  margin: 14px 0;
+  padding: 9px 11px;
+  border: 1px solid var(--cm-warning-border);
+  border-radius: var(--cm-button-radius);
+  color: var(--cm-warning-fg);
+  background: var(--cm-warning-bg);
+  font-size: 12px;
+}
+
+.desktop-session-expired {
+  position: absolute;
+  z-index: 60;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--cm-danger-border);
+  color: var(--cm-danger-fg);
+  background: var(--cm-danger-bg);
+  font-size: 11px;
+}
+
+.desktop-session-expired button {
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--cm-danger-border);
+  border-radius: var(--cm-button-radius);
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}

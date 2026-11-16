@@ -1,0 +1,7 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@cloud-machine/native-client-ui/styles.css";
+@import "./styles.css";
+@import "@cloud-machine/workspace-ui/file-search.css";
+@source "../../../packages/workspace-ui/src/file-preview-images.tsx";
+@source "../../../packages/native-client-ui/src";

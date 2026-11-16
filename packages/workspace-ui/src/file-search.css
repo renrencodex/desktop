@@ -1,0 +1,123 @@
+@source "./file-search.tsx";
+
+.cm-file-search-query-row,
+.cm-file-search-filters,
+.cm-file-search-options {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.cm-file-search-filters,
+.cm-file-search-options {
+  flex-wrap: wrap;
+}
+
+.cm-file-search-options {
+  gap: 4px;
+}
+
+.cm-file-search-input {
+  appearance: none;
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  border: 1px solid var(--cm-border);
+  border-radius: var(--cm-button-radius);
+  background: var(--cm-input-bg);
+  background-clip: padding-box;
+  padding: 0 8px;
+  color: var(--foreground);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.cm-file-search-input::placeholder {
+  color: var(--muted-foreground);
+}
+
+/* Global focus-visible outlines must not draw a second border around these fields. */
+.cm-file-search-input:focus,
+.cm-file-search-input:focus-visible,
+.cm-file-search-mode:focus,
+.cm-file-search-mode:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border-color: var(--cm-accent);
+}
+
+.cm-file-search-action,
+.cm-file-search-mode,
+.cm-file-search-option {
+  flex-shrink: 0;
+  height: 24px;
+  border: 1px solid var(--cm-border);
+  border-radius: var(--cm-button-radius);
+  background: var(--cm-surface-panel);
+  padding: 0 6px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.cm-file-search-action {
+  display: inline-flex;
+  min-width: 38px;
+  align-items: center;
+  justify-content: center;
+  color: var(--foreground);
+}
+
+.cm-file-search-action:disabled {
+  opacity: 0.4;
+}
+
+.cm-file-search-mode {
+  max-width: 100%;
+  color: var(--foreground);
+}
+
+.cm-file-search-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-color: transparent;
+  background: transparent;
+}
+
+.cm-file-search-action:hover:not(:disabled),
+.cm-file-search-option:hover {
+  background: var(--cm-surface-hover);
+  color: var(--foreground);
+}
+
+.cm-file-search-option[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--cm-accent) 30%, var(--cm-border));
+  background: var(--cm-accent-muted);
+  color: var(--foreground);
+}
+
+.cm-file-search-option-check {
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.cm-file-search-option[aria-pressed="true"] .cm-file-search-option-check {
+  opacity: 1;
+}
+
+@media (pointer: coarse) {
+  .cm-file-search-input {
+    height: 32px;
+    /* Avoid iOS zoom when the search field receives focus. */
+    font-size: 16px;
+  }
+
+  .cm-file-search-action,
+  .cm-file-search-mode,
+  .cm-file-search-option {
+    height: 32px;
+  }
+}

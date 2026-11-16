@@ -1,0 +1,13 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-minimal",
+  "description": "Packaged UI with core window permissions only",
+  "webviews": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-hide",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-set-theme"
+  ]
+}

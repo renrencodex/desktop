@@ -1,0 +1,21 @@
+{
+  "name": "@cloud-machine/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "TypeScript SDK",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@cloud-machine/client-contracts": "workspace:*",
+    "zod": "^4.6.7"
+  }
+}

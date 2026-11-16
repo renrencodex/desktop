@@ -1,0 +1,7 @@
+node_modules
+dist
+target
+packages/native-client-ui/public
+desktop-shared-snapshot.json
+apps/desktop/src-tauri/wix
+packages/workspace-ui/assets/terminal-font/LICENSE.md

@@ -1,0 +1,2 @@
+export const RPC_ERROR_TIMEOUT = "RPC_TIMEOUT";
+export const RPC_ERROR_CLOSED = "RPC_CLOSED";

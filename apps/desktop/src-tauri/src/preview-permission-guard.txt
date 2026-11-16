@@ -1,0 +1,72 @@
+(() => {
+  "use strict";
+
+  const notAllowed = () => new DOMException("Permission denied", "NotAllowedError");
+  const reject = () => Promise.reject(notAllowed());
+  const denyMethod = (target, name, replacement = reject) => {
+    if (!target) return;
+    let owner = target;
+    while (owner && !Object.prototype.hasOwnProperty.call(owner, name)) {
+      owner = Object.getPrototypeOf(owner);
+    }
+    if (!owner) return;
+    try {
+      Object.defineProperty(owner, name, {
+        value: replacement,
+        writable: false,
+        configurable: false,
+      });
+    } catch {
+      try {
+        Object.defineProperty(target, name, {
+          value: replacement,
+          writable: false,
+          configurable: false,
+        });
+      } catch {}
+    }
+  };
+
+  const media = navigator.mediaDevices;
+  denyMethod(media, "getUserMedia");
+  denyMethod(media, "getDisplayMedia");
+  denyMethod(media, "selectAudioOutput");
+  denyMethod(media, "enumerateDevices");
+
+  const geolocationError = Object.freeze({
+    code: 1,
+    message: "Permission denied",
+    PERMISSION_DENIED: 1,
+    POSITION_UNAVAILABLE: 2,
+    TIMEOUT: 3,
+  });
+  const denyGeolocation = (_success, error) => {
+    if (typeof error === "function") queueMicrotask(() => error(geolocationError));
+  };
+  denyMethod(navigator.geolocation, "getCurrentPosition", denyGeolocation);
+  denyMethod(navigator.geolocation, "watchPosition", (...args) => {
+    denyGeolocation(...args);
+    return 0;
+  });
+
+  denyMethod(navigator.clipboard, "read");
+  denyMethod(navigator.clipboard, "readText");
+  denyMethod(navigator.clipboard, "write");
+  denyMethod(navigator.clipboard, "writeText");
+  denyMethod(navigator.usb, "requestDevice");
+  denyMethod(navigator.serial, "requestPort");
+  denyMethod(navigator.hid, "requestDevice");
+  denyMethod(navigator.bluetooth, "requestDevice");
+  denyMethod(navigator.wakeLock, "request");
+  denyMethod(navigator, "requestMIDIAccess");
+  denyMethod(navigator, "share");
+
+  denyMethod(window, "showOpenFilePicker");
+  denyMethod(window, "showSaveFilePicker");
+  denyMethod(window, "showDirectoryPicker");
+  denyMethod(Element.prototype, "requestFullscreen");
+  denyMethod(Element.prototype, "requestPointerLock", () => {
+    throw notAllowed();
+  });
+  if (typeof Notification === "function") denyMethod(Notification, "requestPermission");
+})();

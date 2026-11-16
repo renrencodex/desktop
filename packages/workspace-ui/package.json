@@ -1,0 +1,47 @@
+{
+  "name": "@cloud-machine/workspace-ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Web/Desktop 共享 Workspace 宿主边界与主壳模型",
+  "main": "src/index.ts",
+  "exports": {
+    "./referral-bank-account": "./src/referral-bank-account.tsx",
+    ".": "./src/index.ts",
+    "./machine-metrics-cache": "./src/machine-metrics-cache.ts",
+    "./binary-file-download": "./src/binary-file-download.ts",
+    "./binary-file-upload": "./src/binary-file-upload.ts",
+    "./file-search": "./src/file-search.tsx",
+    "./file-watch": "./src/file-watch.ts",
+    "./file-scroll-position": "./src/file-scroll-position.ts",
+    "./file-search.css": "./src/file-search.css",
+    "./local-file-drop": "./src/local-file-drop.ts",
+    "./file-preview-policy": "./src/file-preview-policy.ts",
+    "./file-preview-images": "./src/file-preview-images.tsx",
+    "./terminal-osc52": "./src/terminal-osc52.ts",
+    "./terminal-keyboard": "./src/terminal-keyboard.ts",
+    "./terminal-font": "./src/terminal-font.ts",
+    "./terminal-canvas-selection": "./src/terminal-canvas-selection.ts",
+    "./workspace-diff-tree": "./src/workspace-diff-tree.ts",
+    "./styles.css": "./src/styles.css"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@cloud-machine/api-client": "workspace:*",
+    "@cloud-machine/platform-api": "workspace:*",
+    "@cloud-machine/client-contracts": "workspace:*",
+    "@tanstack/react-query": "^5.101.4",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "ghostty-web": "0.4.0",
+    "monaco-editor": "^0.56.0",
+    "react": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18"
+  }
+}

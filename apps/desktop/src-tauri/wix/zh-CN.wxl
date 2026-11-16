@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WixLocalization Culture="zh-cn" Codepage="936" xmlns="http://schemas.microsoft.com/wix/2006/localization">
+  <String Id="TauriLanguage">2052</String>
+  <String Id="TauriCodepage">936</String>
+  <String Id="LaunchApp">启动 人人Codex</String>
+  <String Id="DowngradeErrorMessage">已安装更新版本的 人人Codex。</String>
+  <String Id="PathEnvVarFeature">将 人人Codex 的安装位置添加到 PATH 系统环境变量，以便在任意位置调用 人人Codex。</String>
+  <String Id="InstallAppFeature">安装 人人Codex。</String>
+  <String Id="LegacyMachineInstallMessage">检测到旧的整机版人人Codex。请先在 Windows“已安装的应用”中卸载旧版，再安装当前用户版本。</String>
+</WixLocalization>

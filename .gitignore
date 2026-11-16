@@ -1,0 +1,13 @@
+node_modules/
+dist/
+target/
+apps/desktop/src-tauri/gen/
+.env
+.env.*
+!.env.example
+*.log
+playwright-report/
+test-results/
+packages/native-client-ui/public/wasm/
+packages/native-client-ui/public/pdfjs/
+packages/native-client-ui/public/fonts/

@@ -1,0 +1,9 @@
+[package]
+name = "client-native"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+client-protocol = { path = "../client-protocol" }
+url.workspace = true
