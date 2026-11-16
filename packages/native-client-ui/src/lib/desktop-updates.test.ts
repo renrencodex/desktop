@@ -6,6 +6,7 @@ import {
   applyDesktopUpdateProgress,
   desktopUpdateProgressPercent,
   formatDesktopUpdateBytes,
+  isDesktopUpdateCapabilityDenied,
 } from "./desktop-updates";
 
 describe("Desktop update progress", () => {
@@ -53,5 +54,13 @@ describe("Desktop update progress", () => {
     expect(desktopUpdateProgressPercent(downloaded)).toBe(100);
     expect(installing.stage).toBe("installing");
     expect(desktopUpdateProgressPercent(installing)).toBe(100);
+  });
+
+  test("distinguishes unsupported package formats from updater failures", () => {
+    expect(
+      isDesktopUpdateCapabilityDenied({ code: "capability_denied", message: "unsupported" }),
+    ).toBe(true);
+    expect(isDesktopUpdateCapabilityDenied({ code: "update_check_failed" })).toBe(false);
+    expect(isDesktopUpdateCapabilityDenied(new Error("network"))).toBe(false);
   });
 });

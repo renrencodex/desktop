@@ -19,6 +19,15 @@ export const PREPARING_DESKTOP_UPDATE_DOWNLOAD: DesktopUpdateDownloadState = {
   stage: "preparing",
 };
 
+export function isDesktopUpdateCapabilityDenied(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "capability_denied"
+  );
+}
+
 export function applyDesktopUpdateProgress(
   state: DesktopUpdateDownloadState,
   progress: DesktopUpdateProgress,

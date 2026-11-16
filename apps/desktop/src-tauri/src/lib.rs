@@ -29,8 +29,7 @@ const MAX_SECRET_LENGTH: usize = 64 * 1024;
 const PREVIEW_PERMISSION_GUARD: &str = include_str!("preview-permission-guard.txt");
 const DESKTOP_UPDATE_ENDPOINT: &str =
     "https://renrencodex.com/downloads/desktop/stable/latest.json";
-const DESKTOP_UPDATE_ARTIFACT_BASE: &str =
-    "https://renrencodex.com/downloads/desktop/stable/windows-x86_64";
+const DESKTOP_UPDATE_ARTIFACT_BASE: &str = "https://renrencodex.com/downloads/desktop/stable";
 
 const UPDATER_PUBLIC_KEY: Option<&str> = option_env!("RENRENCODEX_UPDATER_PUBLIC_KEY");
 
@@ -302,22 +301,55 @@ fn begin_update_operation(state: &DesktopUpdateState) -> Result<UpdateBusyGuard<
     Ok(UpdateBusyGuard(&state.busy))
 }
 
-fn ensure_windows_update_platform() -> Result<(), NativeError> {
-    if cfg!(target_os = "windows") {
-        Ok(())
-    } else {
-        Err(update_error(
-            NativeErrorCode::CapabilityDenied,
-            "desktop updates are only supported on Windows",
-        ))
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum DesktopUpdateTarget {
+    WindowsX86_64,
+    MacosUniversal,
+    LinuxX86_64,
+}
+
+fn desktop_update_target(
+    operating_system: &str,
+    architecture: &str,
+    linux_appimage: bool,
+) -> Option<DesktopUpdateTarget> {
+    match (operating_system, architecture) {
+        ("windows", "x86_64") => Some(DesktopUpdateTarget::WindowsX86_64),
+        ("macos", "aarch64" | "x86_64") => Some(DesktopUpdateTarget::MacosUniversal),
+        ("linux", "x86_64") if linux_appimage => Some(DesktopUpdateTarget::LinuxX86_64),
+        _ => None,
     }
 }
 
-fn expected_windows_update_url(version: &str) -> Result<Url, NativeError> {
-    Url::parse(&format!(
-        "{DESKTOP_UPDATE_ARTIFACT_BASE}/renrencodex-desktop-{version}-x64.msi"
-    ))
-    .map_err(|_| {
+fn current_desktop_update_target() -> Result<DesktopUpdateTarget, NativeError> {
+    let linux_appimage = cfg!(target_os = "linux")
+        && std::env::var_os("APPIMAGE").is_some_and(|value| !value.is_empty());
+    desktop_update_target(std::env::consts::OS, std::env::consts::ARCH, linux_appimage).ok_or_else(
+        || {
+            update_error(
+                NativeErrorCode::CapabilityDenied,
+                "desktop updates require Windows x64, macOS Universal, or Linux x64 AppImage",
+            )
+        },
+    )
+}
+
+fn expected_desktop_update_url(
+    target: DesktopUpdateTarget,
+    version: &str,
+) -> Result<Url, NativeError> {
+    let path = match target {
+        DesktopUpdateTarget::WindowsX86_64 => {
+            format!("windows-x86_64/renrencodex-desktop-{version}-x64.msi")
+        }
+        DesktopUpdateTarget::MacosUniversal => {
+            format!("macos-universal/renrencodex-desktop-{version}-universal.app.tar.gz")
+        }
+        DesktopUpdateTarget::LinuxX86_64 => {
+            format!("linux-x86_64/renrencodex-desktop-{version}-x86_64.AppImage")
+        }
+    };
+    Url::parse(&format!("{DESKTOP_UPDATE_ARTIFACT_BASE}/{path}")).map_err(|_| {
         update_error(
             NativeErrorCode::UpdateCheckFailed,
             "desktop update artifact URL is invalid",
@@ -662,7 +694,7 @@ async fn desktop_update_check(
     state: tauri::State<'_, DesktopUpdateState>,
 ) -> Result<Option<DesktopUpdateInfo>, NativeError> {
     ensure_main_webview(webview.label())?;
-    ensure_windows_update_platform()?;
+    let update_target = current_desktop_update_target()?;
     let _busy = begin_update_operation(&state)?;
     let public_key = UPDATER_PUBLIC_KEY
         .map(str::trim)
@@ -703,7 +735,7 @@ async fn desktop_update_check(
         )
     })?;
     if let Some(update) = &update
-        && update.download_url != expected_windows_update_url(&update.version)?
+        && update.download_url != expected_desktop_update_url(update_target, &update.version)?
     {
         return Err(update_error(
             NativeErrorCode::UpdateCheckFailed,
@@ -733,7 +765,7 @@ async fn desktop_update_install(
     on_event: Channel<DesktopUpdateProgress>,
 ) -> Result<(), NativeError> {
     ensure_main_webview(webview.label())?;
-    ensure_windows_update_platform()?;
+    current_desktop_update_target()?;
     let _busy = begin_update_operation(&state)?;
     let update = state
         .pending
@@ -1018,10 +1050,46 @@ mod tests {
     }
 
     #[test]
-    fn update_artifacts_are_pinned_to_the_versioned_windows_origin() {
+    fn desktop_update_targets_are_explicit_and_linux_requires_appimage() {
         assert_eq!(
-            expected_windows_update_url("0.1.0").unwrap().as_str(),
+            desktop_update_target("windows", "x86_64", false),
+            Some(DesktopUpdateTarget::WindowsX86_64)
+        );
+        assert_eq!(
+            desktop_update_target("macos", "aarch64", false),
+            Some(DesktopUpdateTarget::MacosUniversal)
+        );
+        assert_eq!(
+            desktop_update_target("macos", "x86_64", false),
+            Some(DesktopUpdateTarget::MacosUniversal)
+        );
+        assert_eq!(desktop_update_target("linux", "x86_64", false), None);
+        assert_eq!(
+            desktop_update_target("linux", "x86_64", true),
+            Some(DesktopUpdateTarget::LinuxX86_64)
+        );
+        assert_eq!(desktop_update_target("windows", "aarch64", false), None);
+    }
+
+    #[test]
+    fn update_artifacts_are_pinned_to_versioned_platform_origins() {
+        assert_eq!(
+            expected_desktop_update_url(DesktopUpdateTarget::WindowsX86_64, "0.1.0")
+                .unwrap()
+                .as_str(),
             "https://renrencodex.com/downloads/desktop/stable/windows-x86_64/renrencodex-desktop-0.1.0-x64.msi"
+        );
+        assert_eq!(
+            expected_desktop_update_url(DesktopUpdateTarget::MacosUniversal, "0.1.0")
+                .unwrap()
+                .as_str(),
+            "https://renrencodex.com/downloads/desktop/stable/macos-universal/renrencodex-desktop-0.1.0-universal.app.tar.gz"
+        );
+        assert_eq!(
+            expected_desktop_update_url(DesktopUpdateTarget::LinuxX86_64, "0.1.0")
+                .unwrap()
+                .as_str(),
+            "https://renrencodex.com/downloads/desktop/stable/linux-x86_64/renrencodex-desktop-0.1.0-x86_64.AppImage"
         );
     }
 }

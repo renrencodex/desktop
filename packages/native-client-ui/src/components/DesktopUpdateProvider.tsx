@@ -18,6 +18,7 @@ import {
   applyDesktopUpdateProgress,
   desktopUpdateProgressPercent,
   formatDesktopUpdateBytes,
+  isDesktopUpdateCapabilityDenied,
   type DesktopUpdateDownloadState,
 } from "../lib/desktop-updates";
 import { Button } from "./ui/button";
@@ -65,7 +66,9 @@ export function DesktopUpdateProvider(props: {
   children: ReactNode;
 }) {
   const { platform, hasUnsaved, onBusyChange, children } = props;
-  const supported = hasCapability(platform, "app-update");
+  const capabilitySupported = hasCapability(platform, "app-update");
+  const [unsupportedPlatform, setUnsupportedPlatform] = useState<PlatformApi | null>(null);
+  const supported = capabilitySupported && unsupportedPlatform !== platform;
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
   const [availableUpdate, setAvailableUpdate] = useState<DesktopUpdateInfo | null>(null);
   const [checkStatus, setCheckStatus] = useState<DesktopUpdateCheckStatus>("idle");
@@ -112,7 +115,13 @@ export function DesktopUpdateProvider(props: {
         setAvailableUpdate(update);
         setCheckStatus("available");
         setPromptOpen(true);
-      } catch {
+      } catch (error) {
+        if (isDesktopUpdateCapabilityDenied(error)) {
+          setAvailableUpdate(null);
+          setCheckStatus("idle");
+          setUnsupportedPlatform(platform);
+          return;
+        }
         setCheckStatus("error");
         setError(updateFailureMessage("check"));
         if (!manual) setPromptOpen(false);

@@ -8,6 +8,8 @@ apps/desktop/src-tauri/gen/
 *.log
 playwright-report/
 test-results/
+infra/renrencodex-updater.key
+infra/renrencodex-updater.key.pub
 packages/native-client-ui/public/wasm/
 packages/native-client-ui/public/pdfjs/
 packages/native-client-ui/public/fonts/

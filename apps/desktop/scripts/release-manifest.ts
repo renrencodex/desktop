@@ -1,16 +1,18 @@
-export const DESKTOP_UPDATE_BASE_URL =
-  "https://renrencodex.com/downloads/desktop/stable/windows-x86_64";
+export const DESKTOP_UPDATE_BASE_URL = "https://renrencodex.com/downloads/desktop/stable";
+
+export type DesktopUpdatePlatform =
+  "windows-x86_64" | "darwin-aarch64" | "darwin-x86_64" | "linux-x86_64";
+
+export interface DesktopReleasePlatform {
+  url: string;
+  signature: string;
+}
 
 export interface DesktopReleaseManifest {
   version: string;
   notes: string;
   pub_date: string;
-  platforms: {
-    "windows-x86_64": {
-      url: string;
-      signature: string;
-    };
-  };
+  platforms: Partial<Record<DesktopUpdatePlatform, DesktopReleasePlatform>>;
 }
 
 export function parseStableVersion(value: string): [number, number, number] {
@@ -46,20 +48,17 @@ export function highestPublishedVersion(versions: ReadonlyArray<string | null>):
   return highest;
 }
 
-export function buildDesktopReleaseManifest(input: {
+function releaseMetadata(input: {
   version: string;
   notes: string;
   publishedAt: string;
-  signature: string;
-}): DesktopReleaseManifest {
+}): Pick<DesktopReleaseManifest, "version" | "notes" | "pub_date"> {
   parseStableVersion(input.version);
   const notes = input.notes
     .trim()
     .replace(/^\uFEFF/, "")
     .trim();
-  const signature = input.signature.trim();
   if (!notes) throw new Error("Desktop release notes must not be empty");
-  if (!signature) throw new Error("Desktop updater signature must not be empty");
   if (!Number.isFinite(Date.parse(input.publishedAt))) {
     throw new Error("Desktop release publication date must be RFC 3339");
   }
@@ -67,10 +66,78 @@ export function buildDesktopReleaseManifest(input: {
     version: input.version,
     notes,
     pub_date: input.publishedAt,
+  };
+}
+
+function updaterSignature(value: string, platform: string): string {
+  const signature = value.trim();
+  if (!signature) throw new Error(`Desktop ${platform} updater signature must not be empty`);
+  return signature;
+}
+
+export function desktopUpdateArtifactUrl(platform: DesktopUpdatePlatform, version: string): string {
+  parseStableVersion(version);
+  switch (platform) {
+    case "windows-x86_64":
+      return `${DESKTOP_UPDATE_BASE_URL}/windows-x86_64/renrencodex-desktop-${version}-x64.msi`;
+    case "darwin-aarch64":
+    case "darwin-x86_64":
+      return `${DESKTOP_UPDATE_BASE_URL}/macos-universal/renrencodex-desktop-${version}-universal.app.tar.gz`;
+    case "linux-x86_64":
+      return `${DESKTOP_UPDATE_BASE_URL}/linux-x86_64/renrencodex-desktop-${version}-x86_64.AppImage`;
+  }
+}
+
+export function buildWindowsDesktopReleaseManifest(input: {
+  version: string;
+  notes: string;
+  publishedAt: string;
+  signature: string;
+}): DesktopReleaseManifest {
+  const metadata = releaseMetadata(input);
+  return {
+    ...metadata,
     platforms: {
       "windows-x86_64": {
-        url: `${DESKTOP_UPDATE_BASE_URL}/renrencodex-desktop-${input.version}-x64.msi`,
-        signature,
+        url: desktopUpdateArtifactUrl("windows-x86_64", input.version),
+        signature: updaterSignature(input.signature, "Windows"),
+      },
+    },
+  };
+}
+
+export function buildDesktopReleaseManifest(input: {
+  version: string;
+  notes: string;
+  publishedAt: string;
+  signatures: {
+    windowsX86_64: string;
+    macosUniversal: string;
+    linuxX86_64: string;
+  };
+}): DesktopReleaseManifest {
+  const metadata = releaseMetadata(input);
+  const windowsSignature = updaterSignature(input.signatures.windowsX86_64, "Windows");
+  const macosSignature = updaterSignature(input.signatures.macosUniversal, "macOS");
+  const linuxSignature = updaterSignature(input.signatures.linuxX86_64, "Linux");
+  return {
+    ...metadata,
+    platforms: {
+      "windows-x86_64": {
+        url: desktopUpdateArtifactUrl("windows-x86_64", input.version),
+        signature: windowsSignature,
+      },
+      "darwin-aarch64": {
+        url: desktopUpdateArtifactUrl("darwin-aarch64", input.version),
+        signature: macosSignature,
+      },
+      "darwin-x86_64": {
+        url: desktopUpdateArtifactUrl("darwin-x86_64", input.version),
+        signature: macosSignature,
+      },
+      "linux-x86_64": {
+        url: desktopUpdateArtifactUrl("linux-x86_64", input.version),
+        signature: linuxSignature,
       },
     },
   };

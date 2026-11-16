@@ -174,7 +174,7 @@ function AboutSettings() {
       <section>
         <h2 className="text-base font-semibold text-zinc-100">关于与更新</h2>
         <p className="mt-1 text-xs leading-5 text-zinc-500">
-          {mobile ? "查看 Android 客户端信息" : "查看版本并检查 Windows 客户端更新"}
+          {mobile ? "查看 Android 客户端信息" : "查看版本并检查桌面客户端更新"}
         </p>
       </section>
 

@@ -4,7 +4,7 @@ import { basename, resolve } from "node:path";
 
 import {
   assertNewerRelease,
-  buildDesktopReleaseManifest,
+  buildWindowsDesktopReleaseManifest,
   highestPublishedVersion,
   readPublishedVersion,
 } from "./release-manifest";
@@ -83,7 +83,12 @@ async function main(): Promise<void> {
   const signature = (await readFile(sourceSignature, "utf8")).trim();
   const notes = await readFile(resolveRepositoryPath(notesFile), "utf8");
   const publishedAt = new Date().toISOString();
-  const manifest = buildDesktopReleaseManifest({ version, notes, publishedAt, signature });
+  const manifest = buildWindowsDesktopReleaseManifest({
+    version,
+    notes,
+    publishedAt,
+    signature,
+  });
 
   const outputOverride = option("--output-dir");
   const outputDirectory = resolveReleaseOutputDirectory(version, outputOverride);

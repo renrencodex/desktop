@@ -66,7 +66,7 @@ const platform = createTauriPlatformApi({
   invoke,
   listen,
   createChannel: (onMessage) => new Channel(onMessage),
-  appUpdateEnabled: isWindowsDesktop,
+  appUpdateEnabled: true,
 });
 const tokenState: { access: string | null; refresh: string | null } = {
   access: null,

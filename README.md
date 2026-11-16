@@ -55,6 +55,24 @@ exported client tree.
 publish releases, and its Windows packages are not Authenticode signed while its
 macOS package uses only an ad-hoc signature.
 
+`Desktop Updater Packages` is the separate manual website-distribution workflow.
+It accepts only the current `main` commit after CI for that exact SHA succeeds,
+and reads the existing Tauri updater key only from the branch-restricted
+`desktop-updater-release` Environment. The workflow builds and verifies a signed
+Windows x64 MSI, macOS Universal updater archive and DMG, and Linux x64 AppImage,
+DEB, and RPM. Its final artifact contains the complete `downloads/` tree,
+cross-platform `latest.json`, monotonic `highest.json`, and SHA-256 checksums for
+an operator to deploy atomically to `/var/www/html/downloads`; the workflow never
+logs in to the origin server or changes the website itself.
+
+These packages authenticate application updates with the Tauri key, but they are
+not operating-system-trusted releases: Windows still reports an unknown
+publisher, macOS is ad-hoc signed and not notarized, and the Linux packages are
+not repository-signed. Keep `ENABLE_DESKTOP_UPDATER_BUILD=false` until the three
+updater secrets, source snapshot, and exact-commit CI result have been checked.
+The ordinary `Desktop Packages` artifacts do not embed the updater public key and
+must not replace the website updater packages.
+
 The separate `Desktop Release` workflow is fail closed and runs only when an
 exact `v<stable-semver>` tag is pushed for the current `main` commit. The tag must
 match `apps/desktop/package.json`, the snapshot must come from the upstream

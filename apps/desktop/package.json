@@ -1,6 +1,6 @@
 {
   "name": "@cloud-machine/desktop",
-  "version": "0.2.13",
+  "version": "0.2.14",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,6 +16,7 @@
     "test:file-search": "bun scripts/test-file-search.ts",
     "release:build": "bun run scripts/build-windows-release.ts",
     "release:prepare": "bun run scripts/prepare-windows-release.ts",
+    "release:prepare-all": "bun run scripts/prepare-desktop-release.ts",
     "tauri": "tauri"
   },
   "dependencies": {

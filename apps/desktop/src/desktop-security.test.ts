@@ -228,6 +228,11 @@ describe("Desktop Windows installer branding", () => {
       resolve(import.meta.dir, "../src-tauri/src/lib.rs"),
       "utf8",
     );
+    const frontendSource = await readFile(resolve(import.meta.dir, "main.tsx"), "utf8");
+    const manifestSource = await readFile(
+      resolve(import.meta.dir, "../scripts/release-manifest.ts"),
+      "utf8",
+    );
     const capability = await readFile(
       resolve(import.meta.dir, "../src-tauri/capabilities/main.json"),
       "utf8",
@@ -241,6 +246,12 @@ describe("Desktop Windows installer branding", () => {
     expect(buildScript).not.toMatch(/PRIVATE_KEY\s*=\s*"/);
     expect(nativeSource).toContain("ensure_main_webview(webview.label())?");
     expect(nativeSource).toContain("https://renrencodex.com/downloads/desktop/stable/latest.json");
+    expect(nativeSource).toContain("DesktopUpdateTarget::MacosUniversal");
+    expect(nativeSource).toContain("DesktopUpdateTarget::LinuxX86_64");
+    expect(frontendSource).toContain("appUpdateEnabled: true");
+    expect(manifestSource).toContain('"darwin-aarch64"');
+    expect(manifestSource).toContain('"darwin-x86_64"');
+    expect(manifestSource).toContain('"linux-x86_64"');
     expect(capability).not.toContain("updater:");
   });
 });
