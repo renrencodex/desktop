@@ -28,14 +28,8 @@ import { captureAndHidePreview, decodePreviewSnapshot } from "../lib/preview-sna
 import { PreviewLayoutContext, waitForPreviewLayout } from "../lib/native-preview-layout";
 import { createPreviewTaskQueue } from "../lib/preview-task-queue";
 import { combineAbortSignals } from "../lib/abort-signals";
-import {
-  buildPreviewOpenUrl,
-  canOpenPreview,
-  portsRefetchInterval,
-  uniquePreviewPorts,
-} from "../lib/ports-utils";
+import { canOpenPreview, portsRefetchInterval, uniquePreviewPorts } from "../lib/ports-utils";
 import { useResponsiveViewport } from "../lib/responsive";
-import { getFreshAccessToken } from "../lib/session";
 
 const ISOLATED_PREVIEW_ERROR = "内嵌预览加载失败，请重试或在系统浏览器中打开";
 
@@ -49,8 +43,7 @@ export function WorkbenchBrowser(props: {
   const { platform } = useClientHost();
   const [previewId] = useState(createIsolatedPreviewId);
   const [address, setAddress] = useState(url);
-  // 首帧不直接加载持久化 URL：预览端口需要带令牌重签，等授权判定完成后一次性
-  // 设置最终 URL，避免隔离 WebView 先加载原始地址再重签授权。
+  // 首帧等待端口列表判定禁用/放开，避免隔离 WebView 短暂加载已禁用域名。
   const [previewNavigation, setPreviewNavigation] = useState<{
     url: string;
     revision: number;
@@ -104,25 +97,21 @@ export function WorkbenchBrowser(props: {
       const generation = ++navigationGenerationRef.current;
       const authorizationKey = `${port.visibility}:${port.previewUrl}`;
       authorizedPreviewRef.current = authorizationKey;
-      previewTargetRef.current = { previewUrl: port.previewUrl, targetUrl };
       setExternalUrl(null);
       setAddress(targetUrl);
-      // Preview 中的应用 token 只留在当前组件内存，工作台布局只保存裸地址。
-      if (persistBaseUrl && url !== port.previewUrl) onUrlChange(port.previewUrl);
-      setError(null);
-      const token = port.visibility === "public" ? null : await getFreshAccessToken();
-      if (generation !== navigationGenerationRef.current) return;
-      const authenticated = buildPreviewOpenUrl(targetUrl, port.visibility, token);
-      if (!authenticated) {
-        authorizedPreviewRef.current = null;
+      if (port.visibility !== "public") {
         setPreviewNavigation(null);
-        setError("会话已失效，请重新登录后再打开预览");
+        setError("端口已禁用，请先在端口页放开");
         return;
       }
-      setPreviewNavigation({ url: authenticated, revision: generation });
+      previewTargetRef.current = { previewUrl: port.previewUrl, targetUrl };
+      if (persistBaseUrl && url !== port.previewUrl) onUrlChange(port.previewUrl);
+      setError(null);
+      if (generation !== navigationGenerationRef.current) return;
+      setPreviewNavigation({ url: targetUrl, revision: generation });
       if (openExternally) {
         try {
-          await platform.openPreview(authenticated);
+          await platform.openPreview(targetUrl);
         } catch {
           setError("无法打开系统浏览器，请重试");
         }

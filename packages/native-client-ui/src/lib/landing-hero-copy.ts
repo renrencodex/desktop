@@ -19,7 +19,7 @@ export const PUBLIC_POSITIONING_COPY = {
   authTagline: `${PUBLIC_PRODUCT_CATEGORY} · 独立 Linux，全天候运行`,
   seoTitle: `人人Codex｜${LANDING_HERO_COPY.title}`,
   seoDescription:
-    "人人Codex 为智能体提供独立、全天候运行的 Linux 电脑。任务断线不中断，终端、文件和端口预览可在 Web、Windows 与移动端随时接续；编程智能体是其中一种用法。",
+    "人人Codex 为智能体提供独立、全天候运行的 Linux 电脑。任务断线不中断，终端、文件和端口预览可在 Web、Windows、macOS、Linux 与移动端随时接续；编程智能体是其中一种用法。",
   defaultDescription: "智能体专属电脑：独立 Linux 环境，全天候持续运行",
   registerDescription: "注册人人Codex，为智能体创建一台全天候运行的专属 Linux 电脑。",
 } as const;

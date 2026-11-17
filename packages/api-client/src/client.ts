@@ -46,7 +46,6 @@ import type {
   MachineDeletionQuote,
   MachineEventsPage,
   MachinePort,
-  MachinePortShare,
   MachinePortRow,
   MachineProvisioningStatus,
   MachineSnapshot,
@@ -54,7 +53,6 @@ import type {
   MarkAllNotificationsReadResponse,
   PaymentResponse,
   Plan,
-  PortShare,
   PortVisibility,
   RebuildMachineInput,
   ReferralCommission,
@@ -859,24 +857,10 @@ export function createApiClient(options: ApiClientOptions) {
     ports: {
       list: (machineId: string) =>
         request<MachinePort[]>(`/api/v1/machines/${encodeURIComponent(machineId)}/ports`),
-      listShares: (machineId: string) =>
-        request<MachinePortShare[]>(
-          `/api/v1/machines/${encodeURIComponent(machineId)}/ports/shares`,
-        ),
       setVisibility: (machineId: string, port: number, visibility: PortVisibility) =>
         request<MachinePortRow>(
           `/api/v1/machines/${encodeURIComponent(machineId)}/ports/${port}/visibility`,
           { method: "PUT", body: { visibility } },
-        ),
-      createShare: (machineId: string, port: number, opts: { expiresInSeconds?: number } = {}) =>
-        request<PortShare>(
-          `/api/v1/machines/${encodeURIComponent(machineId)}/ports/${port}/shares`,
-          { method: "POST", body: { expiresInSeconds: opts.expiresInSeconds ?? null } },
-        ),
-      deleteShare: (machineId: string, port: number, shareId: string) =>
-        request<void>(
-          `/api/v1/machines/${encodeURIComponent(machineId)}/ports/${port}/shares/${encodeURIComponent(shareId)}`,
-          { method: "DELETE" },
         ),
     },
     snapshots: {

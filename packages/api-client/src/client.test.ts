@@ -448,22 +448,18 @@ describe("请求构造", () => {
     expect(calls[0]!.headers["idempotency-key"]).toBe("connection-key-123");
   });
 
-  test("端口分享列表、创建和撤销使用正确路径与方法", async () => {
-    const { calls, fetchImpl } = mockFetch((_call, index) =>
-      index === 2 ? new Response(null, { status: 204 }) : jsonResponse(200, []),
-    );
+  test("端口列表和禁用/放开使用保留的 API 路径", async () => {
+    const { calls, fetchImpl } = mockFetch(() => jsonResponse(200, []));
     const { client } = createClient(fetchImpl);
 
-    await client.ports.listShares("machine/one");
-    await client.ports.createShare("machine/one", 3080, { expiresInSeconds: 3600 });
-    await client.ports.deleteShare("machine/one", 3080, "share/one");
+    await client.ports.list("machine/one");
+    await client.ports.setVisibility("machine/one", 3080, "public");
 
     expect(calls.map((call) => [call.method, call.url])).toEqual([
-      ["GET", "http://api.test/api/v1/machines/machine%2Fone/ports/shares"],
-      ["POST", "http://api.test/api/v1/machines/machine%2Fone/ports/3080/shares"],
-      ["DELETE", "http://api.test/api/v1/machines/machine%2Fone/ports/3080/shares/share%2Fone"],
+      ["GET", "http://api.test/api/v1/machines/machine%2Fone/ports"],
+      ["PUT", "http://api.test/api/v1/machines/machine%2Fone/ports/3080/visibility"],
     ]);
-    expect(calls[1]!.body).toEqual({ expiresInSeconds: 3600 });
+    expect(calls[1]!.body).toEqual({ visibility: "public" });
   });
 
   test("Workspace v2 与 workbench layout 方法构造正确路径和请求体", async () => {

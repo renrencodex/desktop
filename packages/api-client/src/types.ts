@@ -382,19 +382,6 @@ export interface MachinePortRow {
   createdAt: string;
 }
 
-/** POST /machines/:id/ports/:port/shares 响应；expiresAt 为 null 表示不过期。 */
-export interface PortShare {
-  id: string;
-  token: string;
-  shareUrl: string;
-  expiresAt: string | null;
-}
-
-/** GET /machines/:id/ports/shares 条目；附带所属端口便于展示和撤销。 */
-export interface MachinePortShare extends PortShare {
-  port: number;
-}
-
 // ---------------------------------------------------------------------------
 // Snapshots（设计文档 Snapshot 章节；Phase 6）
 // ---------------------------------------------------------------------------

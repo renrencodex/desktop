@@ -19,12 +19,16 @@ async function writeJson(path: string, value: unknown): Promise<void> {
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-async function createReleaseFixture(publishedVersion: string) {
+async function createReleaseFixture(publishedVersion: "older" | "current") {
   const root = await mkdtemp(join(tmpdir(), "renrencodex-desktop-release-test-"));
   temporaryDirectories.push(root);
   const inputDirectory = join(root, "input");
   const outputDirectory = join(root, "output");
-  const layout = desktopReleaseLayout("0.2.14");
+  const packageJson = JSON.parse(
+    await readFile(resolve(repositoryRoot, "apps/desktop/package.json"), "utf8"),
+  ) as { version: string };
+  const version = packageJson.version;
+  const layout = desktopReleaseLayout(version);
   await mkdir(inputDirectory, { recursive: true });
   await Promise.all(
     Object.values(layout).map((name) => writeFile(join(inputDirectory, name), `fixture:${name}\n`)),
@@ -34,8 +38,12 @@ async function createReleaseFixture(publishedVersion: string) {
   const publishedHighest = join(root, "highest.json");
   await Promise.all([
     writeFile(notesFile, "跨平台自动更新\n"),
-    writeJson(publishedManifest, { version: publishedVersion }),
-    writeJson(publishedHighest, { version: publishedVersion }),
+    writeJson(publishedManifest, {
+      version: publishedVersion === "current" ? version : "0.0.0",
+    }),
+    writeJson(publishedHighest, {
+      version: publishedVersion === "current" ? version : "0.0.0",
+    }),
   ]);
   return {
     inputDirectory,
@@ -44,6 +52,7 @@ async function createReleaseFixture(publishedVersion: string) {
     outputDirectory,
     publishedHighest,
     publishedManifest,
+    version,
   };
 }
 
@@ -91,11 +100,11 @@ describe("cross-platform Desktop release layout", () => {
   });
 
   test("prepares a complete website tree and monotonic manifests", async () => {
-    const fixture = await createReleaseFixture("0.2.13");
+    const fixture = await createReleaseFixture("older");
     const result = await runPrepare(fixture);
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toBe("");
-    expect(result.stdout).toContain("Prepared cross-platform Desktop 0.2.14");
+    expect(result.stdout).toContain(`Prepared cross-platform Desktop ${fixture.version}`);
 
     const downloads = join(fixture.outputDirectory, "downloads");
     const manifest = JSON.parse(
@@ -106,7 +115,7 @@ describe("cross-platform Desktop release layout", () => {
       pub_date: string;
       platforms: Record<string, { url: string; signature: string }>;
     };
-    expect(manifest.version).toBe("0.2.14");
+    expect(manifest.version).toBe(fixture.version);
     expect(manifest.notes).toBe("跨平台自动更新");
     expect(Number.isFinite(Date.parse(manifest.pub_date))).toBe(true);
     expect(Object.keys(manifest.platforms).sort()).toEqual([
@@ -121,7 +130,7 @@ describe("cross-platform Desktop release layout", () => {
     expect(manifest.platforms["darwin-aarch64"]).toEqual(manifest.platforms["darwin-x86_64"]);
     expect(
       JSON.parse(await readFile(join(downloads, "desktop/stable/highest.json"), "utf8")),
-    ).toEqual({ version: "0.2.14" });
+    ).toEqual({ version: fixture.version });
 
     const fixedAndVersioned = [
       ["renrencodex-windows-x64.msi", `desktop/stable/windows-x86_64/${fixture.layout.windowsMsi}`],
@@ -148,9 +157,9 @@ describe("cross-platform Desktop release layout", () => {
   });
 
   test("rejects a version that is not newer than the published high-water mark", async () => {
-    const fixture = await createReleaseFixture("0.2.14");
+    const fixture = await createReleaseFixture("current");
     const result = await runPrepare(fixture);
     expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toContain("must be newer than published 0.2.14");
+    expect(result.stderr).toContain(`must be newer than published ${fixture.version}`);
   });
 });
