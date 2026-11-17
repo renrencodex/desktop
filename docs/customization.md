@@ -2,8 +2,9 @@
 
 ## 中文
 
-RenrenCodex Desktop 可以作为你自己的云开发产品、企业工作台或远程开发客户端的基础。MIT
-许可证允许修改和分发源代码，但产品标识、服务端契约和安全边界需要由分发者自行配置并维护。
+RenrenCodex Desktop 可以作为团队专属云开发客户端、企业工作台或远程开发客户端的基础。MIT
+许可证允许修改和分发源代码；本文描述的官方支持方式是保留人人Codex平台连接契约，并由分发者维护
+自己的产品标识、更新渠道、代码签名和发行安全边界。
 
 ### 1. 品牌与应用身份
 
@@ -17,13 +18,24 @@ RenrenCodex Desktop 可以作为你自己的云开发产品、企业工作台或
 - `apps/desktop/package.json`：应用版本；
 - 安装包文件名、GitHub Actions 工作流和发布说明。
 
-使用新的反向域名应用标识，例如 `com.example.desktop`。不要让第三方构建继续使用官方应用标识、
+使用新的反向域名应用标识，例如 `com.yourcompany.desktop`。不要让第三方构建继续使用官方应用标识、
 更新密钥或让用户误认为它是官方发行版。RenrenCodex/人人Codex 品牌使用规则见
 `TRADEMARKS.md`。
 
 ### 2. API、Web 与 Gateway 地址
 
-开发地址来自：
+官方生产构建固定使用：
+
+```dotenv
+VITE_API_BASE_URL=https://renrencodex.com
+VITE_WEB_BASE_URL=https://renrencodex.com
+VITE_GATEWAY_WS_URL=wss://renrencodex.com/gateway
+```
+
+API 与 Web 授权共用 `https://renrencodex.com`，Gateway 通过同一官方域名下的 `/gateway`
+WebSocket 入口提供终端、RPC、文件流和监听。定制客户端连接人人Codex平台时必须保留这三个正式值。
+
+人人Codex平台本地联调使用：
 
 ```dotenv
 VITE_API_BASE_URL=http://localhost:3000
@@ -31,38 +43,38 @@ VITE_WEB_BASE_URL=http://localhost:5173
 VITE_GATEWAY_WS_URL=ws://localhost:7444
 ```
 
-生产版本使用 HTTPS/WSS。自有域名需要同步修改：
-
-- `apps/desktop/src/config.ts` 中的生产 Origin 校验；
-- `apps/desktop/src-tauri/tauri.conf.json` 中的 `connect-src` CSP；
-- `crates/client-native/src/lib.rs` 中外部导航、预览域名和更新制品 URL 白名单；
-- `apps/desktop/src-tauri/src/lib.rs` 中的更新清单和制品地址；
-- `apps/desktop/scripts/release-manifest.ts`、`prepare-*-release.ts` 中的发布 URL；
-- `.github/workflows` 中生产构建使用的三个 `VITE_*` 地址。
-
-保持白名单精确。不要为了方便改成任意 `https:`、任意子域或关闭 CSP；否则服务端返回的恶意 URL、
-开放重定向或被接管子域可能获得原生客户端能力。
+`apps/desktop/src/config.ts`、Tauri `connect-src` CSP、Rust URL 白名单和正式构建工作流共同约束这些
+平台地址。不要为了方便改成任意 `https:`、任意子域或关闭 CSP；否则恶意 URL、开放重定向或被接管
+子域可能获得原生客户端能力。第三方发行版自己的更新地址与制品白名单单独按第 5 节配置，不能借此
+放宽平台连接范围。
 
 ### 3. OAuth 与深链接
 
-Desktop 使用浏览器授权和 PKCE S256。以下值必须在客户端、Tauri、操作系统注册和服务端保持一致：
+Desktop 使用浏览器授权和 PKCE S256。人人Codex平台当前只接受以下固定客户端身份：
 
-- `packages/api-client/src/desktop-oauth.ts` 中的客户端 ID 与回调 URI；
-- `packages/client-core/src/desktop-auth.ts` 中的授权页参数；
-- `apps/desktop/src-tauri/tauri.conf.json` 中的深链接 scheme；
-- `crates/client-native/src/lib.rs` 中的回调 URL 校验；
-- 服务端允许的客户端 ID、回调 URI、授权码有效期和 PKCE 校验。
+```text
+client_id: renrencodex-desktop
+redirect_uri: renrencodex://oauth/callback
+```
 
-建议为每个品牌使用唯一 scheme，例如 `examplecloud://oauth/callback`，并保留 `state`、单次授权码、
-五分钟过期和 PKCE verifier 校验。Refresh token 只能存入系统安全存储，不能写入 localStorage、日志或 URL。
+定制客户端连接人人Codex平台时必须保留这两个值，并保持 Tauri 深链接 scheme、Native 回调校验和
+`packages/api-client/src/desktop-oauth.ts` 一致。不要自行更换 Client ID、回调 URI，或放宽回调 URL
+匹配；新增客户端身份需要先成为平台契约的一部分。继续保留 `state`、单次授权码、五分钟过期和 PKCE
+verifier 校验。Refresh token 只能存入系统安全存储，不能写入 localStorage、日志或 URL。
 
-### 4. 后端能力
+操作系统按 URL scheme 分派深链接，不能保证多个应用注册同一 `renrencodex://` scheme 时将回调交给
+发起登录的应用。因此，当前定制发行版不保证与官方客户端同时安装后仍能正常登录；PKCE 可以阻止错误
+应用兑换授权码，但不能避免回调错投导致的登录失败。需要并存时，必须先由平台增加独立 Client ID 和
+回调 URI，再同步更新客户端契约，不能只在本地更换 scheme。
 
-完整接口见[后端 API 与 Gateway 契约](backend-api.md)。如果你的后端暂不实现计费、推广、CLI 商店或
-救援终端，应同时从导航、路由和查询中移除对应功能，不能让界面反复请求不存在的接口。
+### 4. 平台能力
 
-客户端把访问令牌放在内存中，并通过一次性连接票据访问 Gateway。服务端必须从已验证的身份上下文确定
-租户和资源权限，不接受客户端提交的 `userId` 作为授权依据。
+完整接口见[人人Codex平台 API 与 Gateway 客户端契约](backend-api.md)。定制客户端可以隐藏计费、
+推广、CLI 商店或救援终端等界面；隐藏功能时应同时移除对应导航、路由和查询，不能改写接口地址或
+伪造平台响应。
+
+客户端把访问令牌放在内存中，并通过平台签发的一次性连接票据访问 Gateway。人人Codex服务端从
+已验证的身份上下文确定租户和资源权限，不接受客户端提交的 `userId` 作为授权依据。
 
 ### 5. 更新与代码签名
 
@@ -80,20 +92,22 @@ Apple Developer ID/公证/staple，以及适用的 Linux 包或仓库签名。
 ### 6. 改造检查清单
 
 - [ ] 名称、图标、应用标识、窗口和安装器文案已替换；
-- [ ] API、Web、Gateway、预览和更新域名均属于你的服务；
-- [ ] CSP 与 Rust URL 白名单只包含所需 Origin；
-- [ ] OAuth 客户端 ID、scheme、回调 URI 和服务端注册一致；
-- [ ] 后端实现了启用界面所需的 REST 与 WebSocket 契约；
+- [ ] API、Web、Gateway 和预览使用人人Codex官方地址；
+- [ ] CSP 与 Rust URL 白名单未放宽平台 Origin；
+- [ ] OAuth 使用 `renrencodex-desktop` 与 `renrencodex://oauth/callback`；
+- [ ] 已向用户说明定制版与官方客户端的深链接共存限制；
+- [ ] 启用的界面严格使用已发布的 REST 与 WebSocket 客户端契约；
 - [ ] Updater 使用独立密钥，生产私钥未进入源码或构建日志；
 - [ ] 已运行 TypeScript、Rust、测试和平台安装包检查；
 - [ ] 已核对 MIT、第三方许可证和你自己的品牌/隐私条款。
 
 ## English
 
-RenrenCodex Desktop can be the foundation of your own cloud development product, enterprise
-workspace, or remote development client. The MIT License permits modification and distribution,
-but distributors are responsible for their own identity, backend contracts, and security
-boundaries.
+RenrenCodex Desktop can be the foundation of a team-specific cloud development client, enterprise
+workspace, or remote development client. The MIT License permits modification and distribution.
+The officially supported model in this guide retains the RenrenCodex platform connection contract
+while distributors maintain their own product identity, update channel, code signing, and release
+security boundaries.
 
 ### 1. Branding and application identity
 
@@ -109,13 +123,26 @@ Review at least these locations:
 - `apps/desktop/package.json` for the application version; and
 - artifact names, GitHub Actions workflows, and release notes.
 
-Use a new reverse-domain identifier such as `com.example.desktop`. Third-party builds must not
+Use a new reverse-domain identifier such as `com.yourcompany.desktop`. Third-party builds must not
 reuse an official application identifier or updater key, or imply that they are official releases.
 See `TRADEMARKS.md` for the RenrenCodex/人人Codex brand rules.
 
 ### 2. API, web, and Gateway origins
 
-Development origins are configured with:
+Official production builds use these fixed origins:
+
+```dotenv
+VITE_API_BASE_URL=https://renrencodex.com
+VITE_WEB_BASE_URL=https://renrencodex.com
+VITE_GATEWAY_WS_URL=wss://renrencodex.com/gateway
+```
+
+The API and browser authorization page share `https://renrencodex.com`. The Gateway uses the
+`/gateway` WebSocket entry point on the same official domain for terminals, RPC, file streams, and
+watching. A customized client that connects to the RenrenCodex platform must retain all three
+production values.
+
+Local RenrenCodex platform development uses:
 
 ```dotenv
 VITE_API_BASE_URL=http://localhost:3000
@@ -123,44 +150,49 @@ VITE_WEB_BASE_URL=http://localhost:5173
 VITE_GATEWAY_WS_URL=ws://localhost:7444
 ```
 
-Production uses HTTPS/WSS. For your own domains, update all of the following:
-
-- production-origin validation in `apps/desktop/src/config.ts`;
-- the `connect-src` CSP in `apps/desktop/src-tauri/tauri.conf.json`;
-- external-navigation, preview-domain, and update-artifact allowlists in
-  `crates/client-native/src/lib.rs`;
-- updater manifest and artifact URLs in `apps/desktop/src-tauri/src/lib.rs`;
-- release URLs in `apps/desktop/scripts/release-manifest.ts` and `prepare-*-release.ts`; and
-- the three production `VITE_*` values in `.github/workflows`.
-
-Keep allowlists exact. Do not replace them with arbitrary `https:`, arbitrary subdomains, or a
-disabled CSP. A malicious server URL, open redirect, or abandoned subdomain could otherwise gain
-access to native client capabilities.
+Production-origin validation in `apps/desktop/src/config.ts`, the Tauri `connect-src` CSP, Rust URL
+allowlists, and release workflows jointly enforce these platform origins. Do not replace them with
+arbitrary `https:`, arbitrary subdomains, or a disabled CSP. A malicious URL, open redirect, or
+abandoned subdomain could otherwise gain access to native client capabilities. Configure a
+third-party distribution's own update URL and artifact allowlist separately as described in
+section 5; do not use them to widen the platform connection boundary.
 
 ### 3. OAuth and deep links
 
-Desktop authorization uses the system browser and PKCE S256. Keep these values consistent across
-the client, Tauri, operating-system registration, and your server:
+Desktop authorization uses the system browser and PKCE S256. The RenrenCodex platform currently
+accepts only this fixed client identity:
 
-- the client ID and callback URI in `packages/api-client/src/desktop-oauth.ts`;
-- authorization parameters in `packages/client-core/src/desktop-auth.ts`;
-- the deep-link scheme in `apps/desktop/src-tauri/tauri.conf.json`;
-- callback URL validation in `crates/client-native/src/lib.rs`; and
-- the server's allowed client ID, callback URI, authorization-code lifetime, and PKCE checks.
+```text
+client_id: renrencodex-desktop
+redirect_uri: renrencodex://oauth/callback
+```
 
-Use a unique scheme for each brand, such as `examplecloud://oauth/callback`. Preserve `state`,
-single-use authorization codes, the five-minute expiry, and PKCE verifier validation. Refresh
-tokens belong only in operating-system secure storage, never localStorage, logs, or URLs.
+A customized client that connects to the RenrenCodex platform must retain both values and keep the
+Tauri deep-link scheme, native callback validation, and
+`packages/api-client/src/desktop-oauth.ts` consistent. Do not invent another client ID or callback
+URI, or loosen callback matching; a new client identity must first become part of the platform
+contract. Preserve `state`, single-use authorization codes, the five-minute expiry, and PKCE
+verifier validation. Refresh tokens belong only in operating-system secure storage, never
+localStorage, logs, or URLs.
 
-### 4. Backend capabilities
+Operating systems dispatch deep links by URL scheme and cannot guarantee that a callback reaches
+the application that initiated sign-in when multiple applications register the same
+`renrencodex://` scheme. A customized distribution therefore is not guaranteed to sign in
+correctly when installed alongside the official client. PKCE prevents the wrong application from
+redeeming the authorization code, but it cannot prevent login failure caused by callback
+misrouting. Side-by-side installation requires a platform-registered client ID and callback URI,
+followed by a matching client contract update; changing only the local scheme is not supported.
 
-See the [Backend API and Gateway contract](backend-api.md). If your backend does not implement
-billing, referrals, the CLI catalog, or rescue terminals, remove the corresponding navigation,
-routes, and queries so the UI does not repeatedly call unavailable endpoints.
+### 4. Platform capabilities
 
-The client keeps access tokens in memory and uses one-time tickets for Gateway connections. The
-server must derive tenant and resource authorization from verified identity context and must never
-trust a client-supplied `userId` as an authorization boundary.
+See the [RenrenCodex platform API and Gateway client contract](backend-api.md). A customized client
+may hide billing, referrals, the CLI catalog, or rescue terminals. When hiding a capability,
+remove the corresponding navigation, routes, and queries instead of rewriting endpoint origins or
+fabricating platform responses.
+
+The client keeps access tokens in memory and uses platform-issued one-time tickets for Gateway
+connections. The RenrenCodex server derives tenant and resource authorization from verified
+identity context and never trusts a client-supplied `userId` as an authorization boundary.
 
 ### 5. Updates and code signing
 
@@ -179,10 +211,11 @@ stapling, and any applicable Linux package or repository signatures.
 ### 6. Customization checklist
 
 - [ ] Names, icons, application identifiers, windows, and installer copy are replaced.
-- [ ] API, web, Gateway, preview, and update domains belong to your service.
-- [ ] CSP and Rust URL allowlists contain only required origins.
-- [ ] OAuth client ID, scheme, callback URI, and server registration match.
-- [ ] The backend implements every REST and WebSocket contract exposed by the enabled UI.
+- [ ] API, web, Gateway, and preview use the official RenrenCodex origins.
+- [ ] CSP and Rust URL allowlists do not widen the platform origins.
+- [ ] OAuth uses `renrencodex-desktop` and `renrencodex://oauth/callback`.
+- [ ] Users are informed about the deep-link coexistence limitation with the official client.
+- [ ] Enabled UI features use only the published REST and WebSocket client contracts.
 - [ ] The updater uses an independent key and no production private key enters source or logs.
 - [ ] TypeScript, Rust, tests, and platform installers have been validated.
 - [ ] MIT, third-party licenses, and your own branding/privacy terms have been reviewed.

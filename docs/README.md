@@ -4,9 +4,10 @@
 
 这里收录 RenrenCodex Desktop 的开发者文档：
 
-- [后端 API 与 Gateway 契约](backend-api.md)：实现认证、云电脑、工作区和 WebSocket
-  Gateway 所需的客户端协议。
-- [专属客户端改造指南](customization.md)：更换品牌、域名、OAuth、深链接、更新服务和签名配置。
+- [人人Codex平台 API 与 Gateway 客户端契约](backend-api.md)：定制客户端访问认证、云电脑、
+  工作区和 WebSocket Gateway 所需的平台协议。
+- [专属客户端改造指南](customization.md)：更换品牌、界面、安装包、更新服务和签名配置，同时保留
+  人人Codex平台连接边界。
 
 接口实现的代码级事实来源是：
 
@@ -23,10 +24,11 @@
 
 This directory contains developer documentation for RenrenCodex Desktop:
 
-- [Backend API and Gateway contract](backend-api.md): the client-facing protocol required to
-  implement authentication, cloud machines, workspaces, and the WebSocket Gateway.
-- [Custom client guide](customization.md): branding, domains, OAuth, deep links, updates, and
-  signing configuration.
+- [RenrenCodex platform API and Gateway client contract](backend-api.md): the platform protocol a
+  customized client uses for authentication, cloud machines, workspaces, and the WebSocket
+  Gateway.
+- [Custom client guide](customization.md): branding, UI, installers, updates, and signing while
+  retaining the RenrenCodex platform connection boundaries.
 
 The code-level sources of truth are:
 

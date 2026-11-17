@@ -1,10 +1,10 @@
-# 后端 API 与 Gateway 契约 / Backend API and Gateway Contract
+# 人人Codex平台 API 与 Gateway 客户端契约 / RenrenCodex Platform API and Gateway Client Contract
 
 ## 中文
 
-本文描述 RenrenCodex Desktop 当前使用的客户端侧协议，供实现自有后端、授权站点和 WebSocket
-Gateway 时参考。本仓库只提供客户端 SDK 与共享契约；服务端必须自行实现身份、租户隔离、资源调度、
-持久化和机器代理通信。
+本文描述 RenrenCodex Desktop 访问人人Codex平台时使用的客户端侧协议，供定制客户端开发认证登录、
+云电脑、工作区和 WebSocket 客户端功能。本仓库只提供客户端 SDK 与共享契约，不包含平台后端、
+资源调度、持久化或机器代理实现。
 
 接口的代码级事实来源：
 
@@ -16,16 +16,17 @@ Gateway 时参考。本仓库只提供客户端 SDK 与共享契约；服务端�
 
 ### 1. 服务地址
 
-客户端使用三个独立基础地址：
+客户端使用三个职责不同的配置项，官方生产值如下：
 
-| 配置                  | 示例                                | 用途                              |
-| --------------------- | ----------------------------------- | --------------------------------- |
-| `VITE_API_BASE_URL`   | `https://api.example.com`           | `/api/v1` JSON API                |
-| `VITE_WEB_BASE_URL`   | `https://app.example.com`           | 浏览器登录与 `/desktop/authorize` |
-| `VITE_GATEWAY_WS_URL` | `wss://gateway.example.com/gateway` | 终端、RPC、文件流和监听           |
+| 配置                  | 官方生产值                      | 用途                              |
+| --------------------- | ------------------------------- | --------------------------------- |
+| `VITE_API_BASE_URL`   | `https://renrencodex.com`       | `/api/v1` JSON API                |
+| `VITE_WEB_BASE_URL`   | `https://renrencodex.com`       | 浏览器登录与 `/desktop/authorize` |
+| `VITE_GATEWAY_WS_URL` | `wss://renrencodex.com/gateway` | 终端、RPC、文件流和监听           |
 
-生产环境必须使用 HTTPS/WSS。本地开发只接受成套的 localhost HTTP/WS 地址。自定义域名还需要更新
-客户端原生 URL 白名单和 CSP，见[专属客户端改造指南](customization.md)。
+API 与 Web 授权共用官方 HTTPS Origin，Gateway 使用同一域名下的 `/gateway` WebSocket 入口。正式
+构建固定使用上述人人Codex地址；本地联调只接受成套的 localhost HTTP/WS 地址，详见
+[专属客户端改造指南](customization.md)。
 
 ### 2. HTTP 通用规则
 
@@ -36,7 +37,7 @@ Gateway 时参考。本仓库只提供客户端 SDK 与共享契约；服务端�
 - 所有非 `GET`/`HEAD`/`OPTIONS` 请求自动携带 `x-requested-with: fetch`。
 - 需要幂等的操作携带 `idempotency-key`；同一 key、同一主体和同一操作应返回同一业务结果。
 - 成功且无响应体时返回 `204 No Content`，其他成功响应返回 JSON。
-- 资源 ID 放入路径前会经过 `encodeURIComponent`，服务端必须按单个路径段解码。
+- 资源 ID 放入路径前会经过 `encodeURIComponent`，人人Codex服务端按单个路径段解码。
 
 标准错误体：
 
@@ -53,8 +54,8 @@ Gateway 时参考。本仓库只提供客户端 SDK 与共享契约；服务端�
 请求返回 `401`，客户端最多执行一次 refresh 并重放原请求；refresh/revoke/token 接口本身不能触发
 递归 refresh。
 
-服务端必须从已验证的 token/session 推导用户与租户，不能信任请求体或 query 中的 `userId`、租户 ID、
-集群 ID 或资源所有者字段。
+人人Codex服务端从已验证的 token/session 推导用户与租户，不信任请求体或 query 中的 `userId`、
+租户 ID、集群 ID 或资源所有者字段。
 
 ### 3. Desktop 浏览器授权与 PKCE
 
@@ -65,10 +66,10 @@ Gateway 时参考。本仓库只提供客户端 SDK 与共享契约；服务端�
    `response_type=code`、`client_id`、`redirect_uri`、`code_challenge_method=S256`、
    `code_challenge`、`state` 和 `device_name`。
 3. Web 授权页要求用户登录并确认，然后以已认证会话调用授权码接口。
-4. 服务端创建一次性、五分钟有效的授权码，浏览器跳转到桌面深链接
-   `<scheme>://oauth/callback?code=...&state=...`。
+4. 平台创建一次性、五分钟有效的授权码，浏览器跳转到桌面深链接
+   `renrencodex://oauth/callback?code=...&state=...`。
 5. Desktop 精确核对 scheme、host、path、参数数量和 `state`，再用 verifier 换取 token。
-6. 服务端轮换 refresh token；旧 token 在成功 refresh 后立即失效。
+6. 平台轮换 refresh token；旧 token 在成功 refresh 后立即失效。
 
 #### 创建授权码
 
@@ -81,11 +82,11 @@ X-Requested-With: fetch
 
 ```json
 {
-  "clientId": "your-desktop-client",
-  "redirectUri": "yourclient://oauth/callback",
+  "clientId": "renrencodex-desktop",
+  "redirectUri": "renrencodex://oauth/callback",
   "codeChallenge": "43-character-base64url-value",
   "codeChallengeMethod": "S256",
-  "deviceName": "Your Client (macOS)"
+  "deviceName": "RenrenCodex Desktop (macOS)"
 }
 ```
 
@@ -116,8 +117,8 @@ Token 响应：
 }
 ```
 
-自定义客户端必须同时修改客户端 ID、回调 URI、Tauri scheme 和服务端注册；不要只放宽服务端回调 URL
-匹配。
+人人Codex平台当前只接受 `renrencodex-desktop` 与 `renrencodex://oauth/callback`。连接平台的定制
+客户端必须保留这两个值，并保持 Tauri scheme 和 Native 回调校验一致；不要自行更换或放宽匹配。
 
 ### 4. 核心 REST API
 
@@ -184,9 +185,9 @@ Token 响应：
 
 #### 可选账号与商业功能
 
-客户端还定义了账号配额、试用、钱包、通知、用量、订单、充值、续费、支付和推广相关接口。若启用
-这些界面，应实现 `client.ts` 中 `account`、`orders` 和 `account.referrals` 的完整契约；若不启用，应从
-客户端导航和查询中移除，而不是返回伪造成功结果。
+人人Codex平台还提供账号配额、试用、钱包、通知、用量、订单、充值、续费、支付和推广相关接口。
+定制客户端若启用这些界面，应复用 `client.ts` 中 `account`、`orders` 和 `account.referrals` 的完整
+契约；若不启用，应从客户端导航和查询中移除，而不是伪造成功结果。
 
 ### 5. 一次性连接票据
 
@@ -219,8 +220,8 @@ terminal | rpc | upload | download | search | watch
 }
 ```
 
-票据应由服务端绑定到用户、租户、机器和单一 channel，短时有效且只能消费一次。Gateway 必须在升级
-WebSocket 前原子消费票据，拒绝把 access token 直接放进 WebSocket query。
+票据由人人Codex平台绑定到用户、租户、机器和单一 channel，短时有效且只能消费一次。Gateway 在升级
+WebSocket 前原子消费票据；客户端不得把 access token 直接放进 WebSocket query。
 
 ### 6. Gateway WebSocket
 
@@ -269,23 +270,22 @@ WebSocket 前原子消费票据，拒绝把 access token 直接放进 WebSocket 
 `fs.read`、`fs.write`、`fs.mkdir`、`fs.rename`、`fs.remove`。参数、结果、块大小、二进制帧头、背压、
 ACK 和错误码必须复用 `packages/client-contracts/src/cmp.ts`；不要根据本文重新手写另一套协议。
 
-### 7. CORS、代理和安全清单
+### 7. 客户端安全清单
 
-- 仅允许你的桌面 WebView Origin、授权站点和必要管理端 Origin；不要返回任意 `*` 加凭据。
-- 允许 `Authorization`、`Content-Type`、`X-Requested-With`、`Idempotency-Key` 请求头。
-- WebSocket 代理必须支持 Upgrade、长连接、二进制帧和合理的 payload/idle 限制。
-- Gateway 只接受 API 签发的一次性票据，不直接信任客户端指定的用户或机器归属。
-- 对创建、支付、重试、取票、Git 导入和 CLI 操作执行服务端幂等。
-- 对文件路径做规范化和工作区沙箱校验，拒绝符号链接逃逸、`..` 穿越和超限负载。
-- access/refresh token、连接票据、预览分享凭据和支付参数不得进入日志。
-- 对 401/403、网络断开、重复请求和 refresh 轮换竞态编写集成测试。
+- 只连接第 1 节列出的官方平台 Origin，不放宽 CSP 或 Native URL 白名单。
+- 按契约发送 `Authorization`、`Content-Type`、`X-Requested-With` 和 `Idempotency-Key` 请求头。
+- Gateway 通道使用 API 签发的一次性票据，不发送 access token 或自行声明用户、租户和机器归属。
+- 复用 `packages/client-contracts` 的文件路径、负载、二进制帧、背压和错误边界。
+- access/refresh token、连接票据、预览分享凭据和支付参数不得进入客户端日志。
+- 覆盖 401/403、网络断开、重复请求和 refresh 轮换竞态，不绕过平台返回的权限或幂等结果。
 
 ## English
 
-This document describes the client-facing protocol used by RenrenCodex Desktop. It is intended for
-developers implementing their own backend, authorization website, and WebSocket Gateway. The
-repository contains the client SDK and shared contracts, not server-side identity, tenancy,
-scheduling, persistence, or machine-agent implementations.
+This document describes the client-facing protocol that RenrenCodex Desktop uses to access the
+RenrenCodex platform. It is intended for customized clients that provide authentication, cloud
+machine, workspace, and WebSocket client experiences. The repository contains the client SDK and
+shared contracts, not the platform backend, resource scheduler, persistence layer, or
+machine-agent implementation.
 
 Use these code-level sources of truth:
 
@@ -297,9 +297,18 @@ Use these code-level sources of truth:
 
 ### Service origins and HTTP behavior
 
-Configure an API origin (`VITE_API_BASE_URL`), a browser authorization origin
-(`VITE_WEB_BASE_URL`), and a WebSocket origin (`VITE_GATEWAY_WS_URL`). Production requires
-HTTPS/WSS. API routes live under `/api/v1`.
+Official production builds use these exact values:
+
+```dotenv
+VITE_API_BASE_URL=https://renrencodex.com
+VITE_WEB_BASE_URL=https://renrencodex.com
+VITE_GATEWAY_WS_URL=wss://renrencodex.com/gateway
+```
+
+The API and browser authorization page share the official HTTPS origin. The Gateway uses the
+`/gateway` WebSocket entry point on the same domain. Production builds accept only these
+RenrenCodex origins; local platform development accepts only the complete localhost HTTP/WS set.
+API routes live under `/api/v1`.
 
 Authenticated calls use `Authorization: Bearer <access-token>`. Desktop access tokens remain in
 memory and rotating refresh tokens remain in operating-system secure storage. Native token flows
@@ -313,8 +322,9 @@ Successful empty responses use `204`. Other successful responses use JSON. Error
 ```
 
 The client performs at most one refresh and replay after an ordinary `401`. Token, refresh, and
-revoke calls must not recursively refresh. Derive users, tenants, and resource ownership from the
-verified server-side identity context; never trust a client-supplied `userId` as authorization.
+revoke calls must not recursively refresh. The RenrenCodex platform derives users, tenants, and
+resource ownership from verified server-side identity context and never trusts a client-supplied
+`userId` as authorization.
 
 ### Desktop authorization
 
@@ -327,8 +337,9 @@ link. Desktop validates the callback and exchanges the code through
 Use `POST /api/v1/auth/desktop/refresh` to rotate refresh tokens,
 `POST /api/v1/auth/desktop/revoke` to revoke them, and `GET /api/v1/auth/me` to load the current
 user. The request and response examples in the Chinese section above are normative for the current
-client. A custom brand must update the client ID, callback URI, Tauri scheme, native validation,
-and server registration together.
+client. The platform currently accepts only `renrencodex-desktop` with
+`renrencodex://oauth/callback`. A customized client that connects to RenrenCodex must retain both
+values and keep its Tauri scheme and native callback validation consistent.
 
 ### REST surface
 
@@ -340,8 +351,9 @@ The current Desktop UI uses the endpoint groups listed above:
 - ports, shares, snapshots, CLI catalog operations, and rescue sessions; and
 - optional account, wallet, notification, billing, order, payment, trial, and referral features.
 
-Reuse the TypeScript and Zod contracts instead of duplicating DTOs. If a custom backend omits an
-optional capability, remove the corresponding client routes and queries.
+Reuse the TypeScript and Zod contracts instead of duplicating DTOs. A customized client may hide
+an optional platform capability by removing the corresponding client routes and queries; it must
+not rewrite endpoint origins or fabricate platform responses.
 
 ### One-time tickets and WebSockets
 
@@ -351,9 +363,9 @@ Create a ticket with `POST /api/v1/machines/:id/connection-tickets` and one of t
 terminal | rpc | upload | download | search | watch
 ```
 
-Bind every short-lived ticket to the authenticated user, tenant, machine, and exactly one channel,
-then consume it atomically during WebSocket upgrade. Never place the access token directly in a
-WebSocket query string.
+The RenrenCodex platform binds every short-lived ticket to the authenticated user, tenant,
+machine, and exactly one channel, then consumes it atomically during WebSocket upgrade. The client
+must never place the access token directly in a WebSocket query string.
 
 Gateway paths are:
 
@@ -374,11 +386,14 @@ RPC messages use `{ id, method, params }` requests and either `{ id, ok: true, r
 normative definition for schemas, limits, binary frames, backpressure, acknowledgements, and error
 codes.
 
-### Security checklist
+### Client security checklist
 
-- Allow only the required WebView and web origins; do not combine credentialed CORS with `*`.
-- Permit the required authorization, JSON, CSRF, and idempotency headers.
-- Support WebSocket upgrades, binary frames, long-lived connections, and bounded payloads/timeouts.
-- Normalize and sandbox file paths; reject traversal, symlink escape, and oversized payloads.
-- Keep tokens, tickets, preview credentials, and payment parameters out of logs.
-- Test 401/403 handling, disconnects, retries, duplicate writes, and refresh-token rotation races.
+- Connect only to the official platform origins listed above; do not widen the CSP or native URL
+  allowlists.
+- Send the required authorization, JSON, CSRF, and idempotency headers exactly as specified.
+- Use API-issued one-time tickets for Gateway channels; never send access tokens or client-asserted
+  user, tenant, or machine ownership.
+- Reuse `packages/client-contracts` for path, payload, binary-frame, backpressure, and error limits.
+- Keep tokens, tickets, preview credentials, and payment parameters out of client logs.
+- Test 401/403 handling, disconnects, retries, duplicate writes, and refresh-token rotation races
+  without bypassing platform authorization or idempotency results.
