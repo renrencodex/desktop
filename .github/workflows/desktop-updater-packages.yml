@@ -65,6 +65,7 @@ jobs:
 
       - name: Require a monotonically newer public version
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ steps.source.outputs.version }}
         shell: bash
         run: |
