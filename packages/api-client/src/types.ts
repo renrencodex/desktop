@@ -360,24 +360,41 @@ export interface UpdateWorkspaceInput {
 // ---------------------------------------------------------------------------
 
 export type PortVisibility = "private" | "public";
+export type PortExposureMode = "http" | "ssh" | "tcp";
 
-/** GET /machines/:id/ports 条目：运行时监听端口 + DB visibility + previewUrl。 */
+export type MachinePortEndpoint =
+  | { kind: "http"; url: string }
+  | {
+      kind: "ssh";
+      host: string;
+      tlsPort: 443;
+      proxyCommand: string;
+      sshCommand: string;
+    }
+  | { kind: "tcp"; host: string; tlsPort: 443; forwardCommand: string };
+
+/** GET /machines/:id/ports 条目：运行时监听端口 + DB 暴露配置。 */
 export interface MachinePort {
   port: number;
   protocol: "tcp" | "udp";
   address: string;
   process: string | null;
   visibility: PortVisibility;
+  exposureMode: PortExposureMode;
+  endpoint: MachinePortEndpoint;
+  /** 旧客户端兼容字段；只有 exposureMode=http 时才可作为 HTTP Preview 打开。 */
   previewUrl: string;
 }
 
-/** PUT /machines/:id/ports/:port/visibility 响应：ports 行 + previewUrl。 */
+/** PUT 端口配置响应：ports 行 + 模式对应端点。 */
 export interface MachinePortRow {
   id: string;
   machineId: string;
   port: number;
   protocol: "tcp" | "udp";
   visibility: PortVisibility;
+  exposureMode: PortExposureMode;
+  endpoint: MachinePortEndpoint;
   previewUrl: string;
   createdAt: string;
 }

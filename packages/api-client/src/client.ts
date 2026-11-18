@@ -53,6 +53,7 @@ import type {
   MarkAllNotificationsReadResponse,
   PaymentResponse,
   Plan,
+  PortExposureMode,
   PortVisibility,
   RebuildMachineInput,
   ReferralCommission,
@@ -861,6 +862,11 @@ export function createApiClient(options: ApiClientOptions) {
         request<MachinePortRow>(
           `/api/v1/machines/${encodeURIComponent(machineId)}/ports/${port}/visibility`,
           { method: "PUT", body: { visibility } },
+        ),
+      setExposure: (machineId: string, port: number, mode: PortExposureMode) =>
+        request<MachinePortRow>(
+          `/api/v1/machines/${encodeURIComponent(machineId)}/ports/${port}/exposure`,
+          { method: "PUT", body: { mode } },
         ),
     },
     snapshots: {

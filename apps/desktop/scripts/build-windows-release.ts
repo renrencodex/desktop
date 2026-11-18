@@ -29,6 +29,7 @@ export function createReleaseTauriConfig(publicKey: string): object {
   return {
     bundle: {
       createUpdaterArtifacts: true,
+      externalBin: ["binaries/renrencodex-connect"],
     },
     plugins: {
       updater: {
@@ -48,6 +49,17 @@ async function main(): Promise<void> {
   const configPath = join(temporaryDirectory, "tauri.release.conf.json");
 
   try {
+    const connector = Bun.spawn([process.execPath, "run", "connector:prepare"], {
+      cwd: desktopRoot,
+      env: process.env,
+      stdin: "inherit",
+      stdout: "inherit",
+      stderr: "inherit",
+    });
+    const connectorExitCode = await connector.exited;
+    if (connectorExitCode !== 0) {
+      throw new Error(`Native connector build failed with exit code ${connectorExitCode}`);
+    }
     await writeFile(
       configPath,
       `${JSON.stringify(createReleaseTauriConfig(publicKey), null, 2)}\n`,

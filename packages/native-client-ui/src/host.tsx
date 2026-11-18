@@ -32,6 +32,8 @@ export interface ClientHostConfig {
   readonly location: ClientLocation;
   readonly platform: PlatformApi;
   readonly platformKind: WorkspacePlatformKind;
+  /** Desktop 随包连接器在本机的稳定绝对路径；Web/Windows PATH 模式可省略。 */
+  readonly nativeConnectorPath?: string;
   readonly session: ClientSession;
   readonly sessionNotice?: ReactNode;
   readonly windowControls?: ReactNode;

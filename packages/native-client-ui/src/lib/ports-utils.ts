@@ -1,4 +1,15 @@
 /** Ports 面板纯函数（设计文档 Preview 章节）。 */
+import type { MachinePort } from "@cloud-machine/api-client";
+
+export type HttpPreviewPort = MachinePort & {
+  exposureMode: "http";
+  endpoint: { kind: "http"; url: string };
+  previewUrl: string;
+};
+
+export function isHttpPreviewPort(port: MachinePort): port is HttpPreviewPort {
+  return port.exposureMode === "http" && port.endpoint.kind === "http";
+}
 
 /**
  * 预览隧道是 TCP/HTTP 语义，UDP 端口没有可打开的 HTTP 预览

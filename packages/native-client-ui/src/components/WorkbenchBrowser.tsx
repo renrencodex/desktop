@@ -13,7 +13,6 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 
-import type { MachinePort } from "@cloud-machine/api-client";
 import { hasCapability } from "@cloud-machine/platform-api";
 import { useClientHost } from "../host";
 import { api } from "../lib/api";
@@ -28,7 +27,12 @@ import { captureAndHidePreview, decodePreviewSnapshot } from "../lib/preview-sna
 import { PreviewLayoutContext, waitForPreviewLayout } from "../lib/native-preview-layout";
 import { createPreviewTaskQueue } from "../lib/preview-task-queue";
 import { combineAbortSignals } from "../lib/abort-signals";
-import { canOpenPreview, portsRefetchInterval, uniquePreviewPorts } from "../lib/ports-utils";
+import {
+  isHttpPreviewPort,
+  portsRefetchInterval,
+  uniquePreviewPorts,
+  type HttpPreviewPort,
+} from "../lib/ports-utils";
 import { useResponsiveViewport } from "../lib/responsive";
 
 const ISOLATED_PREVIEW_ERROR = "内嵌预览加载失败，请重试或在系统浏览器中打开";
@@ -80,14 +84,13 @@ export function WorkbenchBrowser(props: {
     refetchInterval: portsRefetchInterval(active),
   });
   const previewPorts = useMemo(
-    () =>
-      uniquePreviewPorts((portsQuery.data ?? []).filter((port) => canOpenPreview(port.protocol))),
+    () => uniquePreviewPorts((portsQuery.data ?? []).filter(isHttpPreviewPort)),
     [portsQuery.data],
   );
 
   const openPort = useCallback(
     async (
-      port: MachinePort,
+      port: HttpPreviewPort,
       targetUrl: string,
       persistBaseUrl: boolean,
       openExternally = false,

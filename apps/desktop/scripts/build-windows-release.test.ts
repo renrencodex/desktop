@@ -7,6 +7,7 @@ describe("Desktop Windows release build", () => {
     expect(createReleaseTauriConfig("  updater-public-key\n")).toEqual({
       bundle: {
         createUpdaterArtifacts: true,
+        externalBin: ["binaries/renrencodex-connect"],
       },
       plugins: {
         updater: {

@@ -1,12 +1,14 @@
 {
   "name": "@cloud-machine/desktop",
-  "version": "0.2.15",
+  "version": "0.2.16",
   "private": true,
   "type": "module",
   "scripts": {
     "prepare:assets": "bun run --cwd ../../packages/native-client-ui prepare:assets",
     "dev": "bun run prepare:assets && vite --port 1420",
     "build": "bun run prepare:assets && tsc -p tsconfig.json --noEmit && vite build",
+    "connector:prepare": "bun run scripts/prepare-native-connector.ts",
+    "bundle": "bun run connector:prepare && tauri build --config src-tauri/tauri.connector.conf.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "bun test",
     "test:preview-layout": "bun scripts/test-preview-layout.ts",

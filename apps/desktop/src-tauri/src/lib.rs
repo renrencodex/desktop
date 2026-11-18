@@ -1,4 +1,17 @@
-use std::sync::{Mutex, atomic::AtomicBool};
+use std::{
+    io,
+    path::PathBuf,
+    sync::{Mutex, atomic::AtomicBool},
+};
+
+#[cfg(unix)]
+use std::{
+    fs,
+    fs::OpenOptions,
+    os::unix::fs::PermissionsExt,
+    path::Path,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use client_native::{
     ClipboardWriteRequest, DESKTOP_REFRESH_TOKEN_KEY, DeepLinkPayload, DesktopUpdateInfo,
@@ -62,6 +75,11 @@ struct DesktopLifecycleState {
     exit_pending: AtomicBool,
 }
 
+#[derive(Default)]
+struct NativeConnectorState {
+    path: Mutex<Option<PathBuf>>,
+}
+
 impl DesktopLifecycleState {
     fn request_exit(&self) {
         self.exit_pending
@@ -106,6 +124,96 @@ fn ensure_main_webview(label: &str) -> Result<(), NativeError> {
             message: "command is only available to the main webview".into(),
         })
     }
+}
+
+fn bundled_native_connector_path() -> io::Result<PathBuf> {
+    let executable = std::env::current_exe()?;
+    let directory = executable
+        .parent()
+        .ok_or_else(|| io::Error::other("desktop executable has no parent directory"))?;
+    #[cfg(target_os = "windows")]
+    let file_name = "renrencodex-connect.exe";
+    #[cfg(not(target_os = "windows"))]
+    let file_name = "renrencodex-connect";
+    Ok(directory.join(file_name))
+}
+
+#[cfg(unix)]
+fn install_native_connector(source: &Path, destination: &Path) -> io::Result<()> {
+    if !source.metadata()?.is_file() {
+        return Err(io::Error::other("bundled native connector is not a file"));
+    }
+    let parent = destination
+        .parent()
+        .ok_or_else(|| io::Error::other("native connector destination has no parent"))?;
+    fs::create_dir_all(parent)?;
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(io::Error::other)?
+        .as_nanos();
+    let temporary = destination.with_extension(format!("tmp-{}-{nonce}", std::process::id()));
+    let result = (|| {
+        let mut source_file = fs::File::open(source)?;
+        let mut temporary_file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temporary)?;
+        io::copy(&mut source_file, &mut temporary_file)?;
+        temporary_file.set_permissions(fs::Permissions::from_mode(0o700))?;
+        temporary_file.sync_all()?;
+        drop(temporary_file);
+        fs::rename(&temporary, destination)?;
+        Ok(())
+    })();
+    if result.is_err() {
+        let _ = fs::remove_file(&temporary);
+    }
+    result
+}
+
+fn prepare_native_connector(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let source = bundled_native_connector_path()
+        .map_err(|error| format!("failed to locate bundled native connector: {error}"))?;
+    if !source
+        .metadata()
+        .map_err(|error| format!("failed to inspect bundled native connector: {error}"))?
+        .is_file()
+    {
+        return Err("bundled native connector is not a file".into());
+    }
+    #[cfg(unix)]
+    {
+        let destination = app
+            .path()
+            .app_local_data_dir()
+            .map_err(|error| format!("failed to resolve desktop data directory: {error}"))?
+            .join("bin")
+            .join("renrencodex-connect");
+        install_native_connector(&source, &destination)
+            .map_err(|error| format!("failed to install native connector: {error}"))?;
+        Ok(destination)
+    }
+    #[cfg(target_os = "windows")]
+    {
+        Ok(source)
+    }
+}
+
+#[tauri::command]
+fn native_connector_path(
+    webview: tauri::Webview,
+    state: tauri::State<'_, NativeConnectorState>,
+) -> Result<Option<String>, NativeError> {
+    ensure_main_webview(webview.label())?;
+    let path = state.path.lock().map_err(|_| NativeError {
+        code: NativeErrorCode::CapabilityDenied,
+        message: "native connector state is unavailable".into(),
+    })?;
+    Ok(path
+        .as_ref()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.chars().any(char::is_control))
+        .map(str::to_owned))
 }
 
 #[tauri::command]
@@ -862,6 +970,7 @@ pub fn run() {
         .manage(PreviewWebviewState::default())
         .manage(DesktopUpdateState::default())
         .manage(DesktopLifecycleState::default())
+        .manage(NativeConnectorState::default())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -885,7 +994,8 @@ pub fn run() {
             preview_webview_close,
             desktop_update_current_version,
             desktop_update_check,
-            desktop_update_install
+            desktop_update_install,
+            native_connector_path
         ])
         .on_page_load(|webview, payload| {
             if webview.label() == "main" && payload.event() == PageLoadEvent::Started {
@@ -901,6 +1011,14 @@ pub fn run() {
             desktop_tray::install(app)?;
             app.handle()
                 .plugin(tauri_plugin_updater::Builder::new().build())?;
+            match prepare_native_connector(app.handle()) {
+                Ok(path) => {
+                    if let Ok(mut state) = app.state::<NativeConnectorState>().path.lock() {
+                        *state = Some(path);
+                    }
+                }
+                Err(error) => eprintln!("native connector is unavailable: {error}"),
+            }
             let app_handle = app.handle().clone();
             app.deep_link().on_open_url(move |event| {
                 dispatch_deep_links(
@@ -961,6 +1079,39 @@ mod tests {
         state.request_exit();
         assert!(state.take_exit());
         assert!(!state.take_exit());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn native_connector_install_is_atomic_and_executable() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "renrencodex-native-connector-test-{}-{unique}",
+            std::process::id()
+        ));
+        let source = root.join("source");
+        let destination = root.join("data/bin/renrencodex-connect");
+        fs::create_dir_all(&root).unwrap();
+        fs::write(&source, b"connector-v1").unwrap();
+
+        install_native_connector(&source, &destination).unwrap();
+        assert_eq!(fs::read(&destination).unwrap(), b"connector-v1");
+        assert_eq!(
+            destination.metadata().unwrap().permissions().mode() & 0o777,
+            0o700
+        );
+
+        fs::write(&source, b"connector-v2").unwrap();
+        install_native_connector(&source, &destination).unwrap();
+        assert_eq!(fs::read(&destination).unwrap(), b"connector-v2");
+        assert_eq!(
+            fs::read_dir(destination.parent().unwrap()).unwrap().count(),
+            1
+        );
+        fs::remove_dir_all(&root).unwrap();
     }
 
     #[test]

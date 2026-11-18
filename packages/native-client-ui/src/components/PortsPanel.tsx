@@ -1,5 +1,10 @@
-/** Ports 页签：检测合规监听端口，并以禁用/放开控制预览域名。 */
-import { isApiError, type MachinePort, type PortVisibility } from "@cloud-machine/api-client";
+/** Ports 页签：检测 TCP 监听端口，选择唯一暴露模式并控制是否放开。 */
+import {
+  isApiError,
+  type MachinePort,
+  type PortExposureMode,
+  type PortVisibility,
+} from "@cloud-machine/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
@@ -7,7 +12,6 @@ import { useState } from "react";
 import { useClientHost } from "../host";
 import { api } from "../lib/api";
 import {
-  canOpenPreview,
   normalizePreviewUrlHostname,
   portsRefetchInterval,
   previewDomainLabel,
@@ -19,11 +23,46 @@ const VISIBILITY_LABEL: Record<PortVisibility, string> = {
   public: "放开",
 };
 
+const EXPOSURE_LABEL: Record<PortExposureMode, string> = {
+  http: "HTTP",
+  ssh: "SSH",
+  tcp: "TCP",
+};
+
+function shellQuote(value: string): string {
+  return `'${value.replaceAll("'", `'"'"'`)}'`;
+}
+
+function shellDoubleQuote(value: string): string {
+  return `"${value
+    .replaceAll("\\", "\\\\")
+    .replaceAll('"', '\\"')
+    .replaceAll("$", "\\$")
+    .replaceAll("`", "\\`")}"`;
+}
+
+export function nativeEndpointCommand(
+  port: MachinePort,
+  nativeConnectorPath?: string,
+): string | null {
+  if (port.endpoint.kind === "http") return null;
+  if (!nativeConnectorPath) {
+    return port.endpoint.kind === "ssh" ? port.endpoint.sshCommand : port.endpoint.forwardCommand;
+  }
+  if (port.endpoint.kind === "ssh") {
+    // OpenSSH expands percent tokens inside ProxyCommand; double % preserves a literal path byte.
+    const proxyPath = nativeConnectorPath.replaceAll("%", "%%");
+    const proxyCommand = `${shellDoubleQuote(proxyPath)} proxy %h`;
+    return `ssh -o ${shellQuote(`ProxyCommand=${proxyCommand}`)} root@${port.endpoint.host}`;
+  }
+  return `${shellQuote(nativeConnectorPath)} forward ${port.endpoint.host} --listen 127.0.0.1:${port.port}`;
+}
+
 export function PortsPanel({ machineId, active = true }: { machineId: string; active?: boolean }) {
-  const { platform } = useClientHost();
+  const { platform, nativeConnectorPath } = useClientHost();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
-  const [copiedPreviewUrl, setCopiedPreviewUrl] = useState<string | null>(null);
+  const [copiedPort, setCopiedPort] = useState<number | null>(null);
   const [manualRefreshing, setManualRefreshing] = useState(false);
 
   const portsQuery = useQuery({
@@ -45,6 +84,16 @@ export function PortsPanel({ machineId, active = true }: { machineId: string; ac
     onError: (cause) => setError(userErrorMessage(cause, "更新端口状态失败，请重试")),
   });
 
+  const exposureMutation = useMutation({
+    mutationFn: ({ port, mode }: { port: number; mode: PortExposureMode }) =>
+      api.ports.setExposure(machineId, port, mode),
+    onSuccess: () => {
+      setError(null);
+      void queryClient.invalidateQueries({ queryKey: ["machine-ports", machineId] });
+    },
+    onError: (cause) => setError(userErrorMessage(cause, "更新端口暴露模式失败，请重试")),
+  });
+
   const refreshPorts = async () => {
     setManualRefreshing(true);
     try {
@@ -55,61 +104,86 @@ export function PortsPanel({ machineId, active = true }: { machineId: string; ac
   };
 
   const openDomain = async (port: MachinePort) => {
+    if (port.endpoint.kind !== "http") return;
     try {
-      await platform.openExternal(normalizePreviewUrlHostname(port.previewUrl));
+      await platform.openExternal(normalizePreviewUrlHostname(port.endpoint.url));
     } catch (cause) {
       setError(userErrorMessage(cause, "无法打开系统浏览器，请重试"));
     }
   };
 
-  const copyPreviewUrl = async (port: MachinePort) => {
+  const copyEndpoint = async (port: MachinePort) => {
+    const value =
+      port.endpoint.kind === "http"
+        ? normalizePreviewUrlHostname(port.endpoint.url)
+        : nativeEndpointCommand(port, nativeConnectorPath)!;
     try {
-      await platform.clipboard.writeText(normalizePreviewUrlHostname(port.previewUrl));
-      setCopiedPreviewUrl(port.previewUrl);
-      setTimeout(
-        () => setCopiedPreviewUrl((current) => (current === port.previewUrl ? null : current)),
-        2_000,
-      );
+      await platform.clipboard.writeText(value);
+      setCopiedPort(port.port);
+      setTimeout(() => setCopiedPort((current) => (current === port.port ? null : current)), 2_000);
     } catch {
-      setError("复制失败，请手动选中预览域名复制");
+      setError("复制失败，请手动选中访问地址或命令复制");
     }
   };
 
-  const domain = (port: MachinePort, compact: boolean) => {
-    if (!canOpenPreview(port.protocol)) {
-      return <span className="text-xs text-zinc-600">不支持预览</span>;
-    }
-    const label = previewDomainLabel(port.previewUrl);
+  const endpoint = (port: MachinePort, compact: boolean) => {
+    const label =
+      port.endpoint.kind === "http"
+        ? previewDomainLabel(port.endpoint.url)
+        : port.endpoint.host.toLowerCase();
+    const title =
+      port.endpoint.kind === "http"
+        ? port.endpoint.url
+        : nativeEndpointCommand(port, nativeConnectorPath)!;
     const textClass = `${compact ? "text-[10px] sm:text-xs" : "text-xs"} min-w-0 flex-1 truncate text-left font-mono ${
-      port.visibility === "public" ? "text-sky-400 hover:text-sky-500" : "text-zinc-500"
+      port.visibility === "public" && port.endpoint.kind === "http"
+        ? "text-sky-400 hover:text-sky-500"
+        : "text-zinc-500"
     }`;
     return (
       <div className="flex min-w-0 items-center gap-2">
-        {port.visibility === "public" ? (
+        {port.visibility === "public" && port.endpoint.kind === "http" ? (
           <button
             type="button"
             onClick={() => void openDomain(port)}
             aria-label={`访问 ${port.port} 端口预览域名`}
-            title={port.previewUrl}
+            title={title}
             className={textClass}
           >
             {label}
           </button>
         ) : (
-          <span title={port.previewUrl} className={textClass}>
+          <span title={title} className={textClass}>
             {label}
           </span>
         )}
         <button
           type="button"
-          aria-label={`复制 ${port.port} 端口预览地址`}
-          onClick={() => void copyPreviewUrl(port)}
+          aria-label={`复制 ${port.port} 端口访问${port.endpoint.kind === "http" ? "地址" : "命令"}`}
+          onClick={() => void copyEndpoint(port)}
           className="cm-button shrink-0"
         >
-          {copiedPreviewUrl === port.previewUrl ? "已复制" : "复制"}
+          {copiedPort === port.port
+            ? "已复制"
+            : port.endpoint.kind === "http"
+              ? "复制"
+              : "复制命令"}
         </button>
       </div>
     );
+  };
+
+  const setVisibility = (port: MachinePort, visibility: PortVisibility) => {
+    if (
+      visibility === "public" &&
+      port.exposureMode !== "http" &&
+      !window.confirm(
+        `${EXPOSURE_LABEL[port.exposureMode]} 模式会把原始端口开放到公网。请确认目标服务已配置自己的身份认证和访问控制。`,
+      )
+    ) {
+      return;
+    }
+    visibilityMutation.mutate({ port: port.port, visibility });
   };
 
   const ports = portsQuery.data ?? [];
@@ -117,7 +191,8 @@ export function PortsPanel({ machineId, active = true }: { machineId: string; ac
     <div className="flex h-full min-h-0 flex-col">
       <div className="cm-toolbar h-auto min-h-8 flex-wrap gap-x-4 gap-y-1 px-3 py-1.5">
         <p className="min-w-0 flex-1 text-[11px] text-zinc-500 sm:text-xs">
-          首次检测到的 HTTP/WS 端口默认放开；如果服务包含敏感内容，请将其设为禁用。
+          首次检测到的 TCP 监听端口默认禁用；HTTP 可直接访问，SSH/TCP 需使用官方 renrencodex-connect
+          连接器。
           <span className="break-all text-zinc-600">
             预览域名示例：https://端口-01m6ape8w7yt4yd1neg3ccqwd8.preview.renrencodex.com
           </span>
@@ -169,26 +244,49 @@ export function PortsPanel({ machineId, active = true }: { machineId: string; ac
                       </p>
                       <p className="mt-1 font-mono text-[10px] text-zinc-600">{port.address}</p>
                     </div>
-                    <select
-                      aria-label={`${port.port} 端口状态`}
-                      value={port.visibility}
-                      disabled={visibilityMutation.isPending}
-                      onChange={(event) =>
-                        visibilityMutation.mutate({
-                          port: port.port,
-                          visibility: event.target.value as PortVisibility,
-                        })
-                      }
-                      className="cm-input cm-mobile-compact-input h-8 w-auto py-0 text-xs"
-                    >
-                      {(Object.keys(VISIBILITY_LABEL) as PortVisibility[]).map((visibility) => (
-                        <option key={visibility} value={visibility}>
-                          {VISIBILITY_LABEL[visibility]}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex shrink-0 gap-1.5">
+                      <select
+                        aria-label={`${port.port} 端口暴露模式`}
+                        value={port.exposureMode}
+                        disabled={
+                          port.port === 22 ||
+                          port.visibility === "public" ||
+                          exposureMutation.isPending
+                        }
+                        onChange={(event) =>
+                          exposureMutation.mutate({
+                            port: port.port,
+                            mode: event.target.value as PortExposureMode,
+                          })
+                        }
+                        className="cm-input cm-mobile-compact-input h-8 w-auto py-0 text-xs"
+                      >
+                        {(Object.keys(EXPOSURE_LABEL) as PortExposureMode[]).map((mode) => (
+                          <option key={mode} value={mode}>
+                            {EXPOSURE_LABEL[mode]}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        aria-label={`${port.port} 端口状态`}
+                        value={port.visibility}
+                        disabled={visibilityMutation.isPending}
+                        onChange={(event) =>
+                          setVisibility(port, event.target.value as PortVisibility)
+                        }
+                        className="cm-input cm-mobile-compact-input h-8 w-auto py-0 text-xs"
+                      >
+                        {(Object.keys(VISIBILITY_LABEL) as PortVisibility[]).map((visibility) => (
+                          <option key={visibility} value={visibility}>
+                            {VISIBILITY_LABEL[visibility]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <div className="rounded-md bg-zinc-900/60 px-2.5 py-2">{domain(port, true)}</div>
+                  <div className="rounded-md bg-zinc-900/60 px-2.5 py-2">
+                    {endpoint(port, true)}
+                  </div>
                 </article>
               ))}
             </div>
@@ -199,7 +297,8 @@ export function PortsPanel({ machineId, active = true }: { machineId: string; ac
                   <th className="px-4 py-2 font-medium">端口</th>
                   <th className="px-4 py-2 font-medium">进程</th>
                   <th className="px-4 py-2 font-medium">监听地址</th>
-                  <th className="px-4 py-2 font-medium">预览域名</th>
+                  <th className="px-4 py-2 font-medium">模式</th>
+                  <th className="px-4 py-2 font-medium">访问端点</th>
                   <th className="px-4 py-2 font-medium">状态</th>
                 </tr>
               </thead>
@@ -216,17 +315,38 @@ export function PortsPanel({ machineId, active = true }: { machineId: string; ac
                       {port.process ?? "-"}
                     </td>
                     <td className="px-4 py-2 font-mono text-xs text-zinc-400">{port.address}</td>
-                    <td className="max-w-72 px-4 py-2">{domain(port, false)}</td>
+                    <td className="px-4 py-2">
+                      <select
+                        aria-label={`${port.port} 端口暴露模式`}
+                        value={port.exposureMode}
+                        disabled={
+                          port.port === 22 ||
+                          port.visibility === "public" ||
+                          exposureMutation.isPending
+                        }
+                        onChange={(event) =>
+                          exposureMutation.mutate({
+                            port: port.port,
+                            mode: event.target.value as PortExposureMode,
+                          })
+                        }
+                        className="cm-input h-7 w-auto py-0 text-xs"
+                      >
+                        {(Object.keys(EXPOSURE_LABEL) as PortExposureMode[]).map((mode) => (
+                          <option key={mode} value={mode}>
+                            {EXPOSURE_LABEL[mode]}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="max-w-72 px-4 py-2">{endpoint(port, false)}</td>
                     <td className="px-4 py-2">
                       <select
                         aria-label={`${port.port} 端口状态`}
                         value={port.visibility}
                         disabled={visibilityMutation.isPending}
                         onChange={(event) =>
-                          visibilityMutation.mutate({
-                            port: port.port,
-                            visibility: event.target.value as PortVisibility,
-                          })
+                          setVisibility(port, event.target.value as PortVisibility)
                         }
                         className="cm-input h-7 w-auto py-0 text-xs"
                       >

@@ -649,6 +649,7 @@ function AuthenticatedApp(props: {
   onDiscardDraftAndLogin: () => void;
 }) {
   const dirtyFileCount = useWorkbenchStore((state) => state.dirtyFileCount);
+  const [nativeConnectorPath, setNativeConnectorPath] = useState<string>();
   const {
     config: desktopConfig,
     user,
@@ -672,6 +673,21 @@ function AuthenticatedApp(props: {
     onDirtyChange(dirtyFileCount > 0);
   }, [dirtyFileCount, onDirtyChange]);
 
+  useEffect(() => {
+    if (isWindowsDesktop) return;
+    let active = true;
+    void invoke<string | null>("native_connector_path")
+      .then((path) => {
+        if (active && path) setNativeConnectorPath(path);
+      })
+      .catch((error: unknown) => {
+        console.error("Desktop native connector path is unavailable", error);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const host = useMemo<ClientHostConfig>(
     () => ({
       api,
@@ -681,6 +697,7 @@ function AuthenticatedApp(props: {
       location: { pathname, search },
       platform,
       platformKind: "tauri-desktop",
+      nativeConnectorPath,
       session: {
         user,
         restore: () => Promise.resolve(),
@@ -710,6 +727,7 @@ function AuthenticatedApp(props: {
       desktopConfig.apiBaseUrl,
       desktopConfig.gatewayWsUrl,
       navigation,
+      nativeConnectorPath,
       onDiscardDraftAndLogin,
       onLogout,
       pathname,

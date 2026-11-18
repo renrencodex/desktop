@@ -448,18 +448,21 @@ describe("请求构造", () => {
     expect(calls[0]!.headers["idempotency-key"]).toBe("connection-key-123");
   });
 
-  test("端口列表和禁用/放开使用保留的 API 路径", async () => {
+  test("端口列表、禁用/放开和暴露模式使用固定 API 路径", async () => {
     const { calls, fetchImpl } = mockFetch(() => jsonResponse(200, []));
     const { client } = createClient(fetchImpl);
 
     await client.ports.list("machine/one");
     await client.ports.setVisibility("machine/one", 3080, "public");
+    await client.ports.setExposure("machine/one", 3080, "tcp");
 
     expect(calls.map((call) => [call.method, call.url])).toEqual([
       ["GET", "http://api.test/api/v1/machines/machine%2Fone/ports"],
       ["PUT", "http://api.test/api/v1/machines/machine%2Fone/ports/3080/visibility"],
+      ["PUT", "http://api.test/api/v1/machines/machine%2Fone/ports/3080/exposure"],
     ]);
     expect(calls[1]!.body).toEqual({ visibility: "public" });
+    expect(calls[2]!.body).toEqual({ mode: "tcp" });
   });
 
   test("Workspace v2 与 workbench layout 方法构造正确路径和请求体", async () => {
