@@ -40,7 +40,13 @@ const target = process.env.CONNECTOR_TARGET ?? process.env.TAURI_ENV_TARGET_TRIP
 if (target === "universal-apple-darwin") {
   const arm = await build("aarch64-apple-darwin");
   const intel = await build("x86_64-apple-darwin");
+  const armSidecar = join(binariesDir, "renrencodex-connect-aarch64-apple-darwin");
+  const intelSidecar = join(binariesDir, "renrencodex-connect-x86_64-apple-darwin");
   const sidecarOutput = join(binariesDir, "renrencodex-connect-universal-apple-darwin");
+  await copyFile(arm, armSidecar);
+  await copyFile(intel, intelSidecar);
+  await chmod(armSidecar, 0o755);
+  await chmod(intelSidecar, 0o755);
   await run(["lipo", "-create", "-output", sidecarOutput, arm, intel]);
   await chmod(sidecarOutput, 0o755);
 } else {

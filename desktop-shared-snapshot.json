@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "policy": "desktop-public-v1",
   "source": {
-    "commit": "674cca84aa1fd9fd289e57e162ca92c47b9b9f73",
+    "commit": "d3e6f48951a3d1f5425e7ae3b9fc6b9783ab54b9",
     "channel": "production"
   },
   "paths": [
@@ -28,7 +28,7 @@
     "apps/desktop/scripts/file-search.fixture.tsx": "a1425ea4679e2e8ac26ec4e2d47cebf28d87af3569b91254abcf757582fe477f",
     "apps/desktop/scripts/prepare-desktop-release.test.ts": "e6455e57c696bde036b3edf6bed43350aeefbcf475fb4f00218f9443433ce1c9",
     "apps/desktop/scripts/prepare-desktop-release.ts": "bd2f7cf26bd24ee5483e272cd0e52dff349d1ebd58ae1bfb50e5d69e1e56fb83",
-    "apps/desktop/scripts/prepare-native-connector.ts": "0bd60735ba0e6c25bf9fd154d3eaccc1260aca0729baf8245a13dfeaf234d485",
+    "apps/desktop/scripts/prepare-native-connector.ts": "5674dc6bf14056cdfd35e26eb10cab05b750cf1052c072cd2bacbee5d31f5d13",
     "apps/desktop/scripts/prepare-windows-release.test.ts": "8f1281a6b91c9ac79b8a3cfc192f1cb247030c0668ded769e25c798fa2f61230",
     "apps/desktop/scripts/prepare-windows-release.ts": "6653621535a210440aceb93257088010bb61404ab229a8853b6614c8f3d5c7ab",
     "apps/desktop/scripts/preview-layout.fixture.tsx": "e22c7c00b47812962cd197abcd5ac531f2103cf2a542432bc777a8b4ffb61cb9",
