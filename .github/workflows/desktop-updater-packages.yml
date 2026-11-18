@@ -111,6 +111,10 @@ jobs:
     environment: desktop-updater-release
     runs-on: windows-latest
     timeout-minutes: 60
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
     env:
       VITE_API_BASE_URL: https://renrencodex.com
       VITE_WEB_BASE_URL: https://renrencodex.com
@@ -149,9 +153,14 @@ jobs:
           $ErrorActionPreference = "Stop"
           $configPath = Join-Path $env:RUNNER_TEMP "tauri.updater.conf.json"
           @{
-            bundle = @{ createUpdaterArtifacts = $true }
+            bundle = @{
+              createUpdaterArtifacts = $true
+              externalBin = @("binaries/renrencodex-connect")
+            }
             plugins = @{ updater = @{ pubkey = $env:RENRENCODEX_UPDATER_PUBLIC_KEY.Trim() } }
           } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 $configPath
+          bun run --cwd apps/desktop connector:prepare
+          if ($LASTEXITCODE -ne 0) { throw "Windows connector build failed" }
           bun run --cwd apps/desktop tauri build --ci --bundles msi --config $configPath
           if ($LASTEXITCODE -ne 0) { throw "Windows updater build failed" }
 
@@ -169,6 +178,29 @@ jobs:
           Copy-Item $msi[0].FullName "$output/renrencodex-desktop-$env:RELEASE_VERSION-x64.msi"
           Copy-Item $signature.FullName "$output/renrencodex-desktop-$env:RELEASE_VERSION-x64.msi.sig"
 
+          $connector = (Get-Item "apps/desktop/src-tauri/binaries/renrencodex-connect-x86_64-pc-windows-msvc.exe").FullName
+          $versionOutput = (& $connector --version).Trim()
+          if ($versionOutput -ne "renrencodex-connect $env:RELEASE_VERSION") {
+            throw "unexpected connector version: $versionOutput"
+          }
+          if ((Get-AuthenticodeSignature $connector).Status -eq "Valid") {
+            throw "certificate-free connector unexpectedly has a trusted Authenticode signature"
+          }
+          $staging = Join-Path $env:RUNNER_TEMP "renrencodex-connect-windows-x64"
+          New-Item -ItemType Directory -Force $staging | Out-Null
+          Copy-Item $connector "$staging/renrencodex-connect.exe"
+          Copy-Item "apps/renrencodex-connect/README.md" "$staging/README.md"
+          Copy-Item "LICENSE" "$staging/LICENSE"
+          Copy-Item "THIRD_PARTY_NOTICES.md" "$staging/THIRD_PARTY_NOTICES.md"
+          $archive = "$output/renrencodex-connect-$env:RELEASE_VERSION-windows-x64.zip"
+          Compress-Archive -Path "$staging/*" -DestinationPath $archive -CompressionLevel Optimal
+          if ((Get-Item $archive).Length -eq 0) { throw "connector archive is empty" }
+
+      - name: Attest standalone Windows connector
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: target/desktop-updater-artifact/renrencodex-connect-*-windows-x64.zip
+
       - name: Upload Windows updater package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -183,6 +215,10 @@ jobs:
     environment: desktop-updater-release
     runs-on: macos-15
     timeout-minutes: 90
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
     env:
       APPLE_SIGNING_IDENTITY: "-"
       VITE_API_BASE_URL: https://renrencodex.com
@@ -222,7 +258,7 @@ jobs:
           CONNECTOR_TARGET=universal-apple-darwin \
             bun run --cwd apps/desktop connector:prepare
           config_path="$RUNNER_TEMP/tauri.updater.conf.json"
-          bun -e 'await Bun.write(process.argv[1], JSON.stringify({bundle:{createUpdaterArtifacts:true},plugins:{updater:{pubkey:process.env.RENRENCODEX_UPDATER_PUBLIC_KEY?.trim()}}}, null, 2))' "$config_path"
+          bun -e 'await Bun.write(process.argv[1], JSON.stringify({bundle:{createUpdaterArtifacts:true,externalBin:["binaries/renrencodex-connect"]},plugins:{updater:{pubkey:process.env.RENRENCODEX_UPDATER_PUBLIC_KEY?.trim()}}}, null, 2))' "$config_path"
           bun run --cwd apps/desktop tauri build --ci \
             --target universal-apple-darwin --bundles app,dmg --config "$config_path"
 
@@ -251,6 +287,27 @@ jobs:
           cp "$updater_path" "$output/renrencodex-desktop-$RELEASE_VERSION-universal.app.tar.gz"
           cp "$updater_path.sig" "$output/renrencodex-desktop-$RELEASE_VERSION-universal.app.tar.gz.sig"
 
+          connector="apps/desktop/src-tauri/binaries/renrencodex-connect-universal-apple-darwin"
+          architectures="$(lipo -archs "$connector")"
+          [[ " $architectures " == *" arm64 "* && " $architectures " == *" x86_64 "* ]]
+          [[ "$("$connector" --version)" == "renrencodex-connect $RELEASE_VERSION" ]]
+          codesign --force --sign - "$connector"
+          codesign --verify --strict --verbose=2 "$connector"
+          codesign --display --verbose=4 "$connector" 2>&1 | grep -Fq 'Signature=adhoc'
+          staging="$RUNNER_TEMP/renrencodex-connect-macos-universal"
+          mkdir "$staging"
+          cp "$connector" "$staging/renrencodex-connect"
+          cp apps/renrencodex-connect/README.md "$staging/README.md"
+          cp LICENSE "$staging/LICENSE"
+          cp THIRD_PARTY_NOTICES.md "$staging/THIRD_PARTY_NOTICES.md"
+          tar -czf "$output/renrencodex-connect-$RELEASE_VERSION-macos-universal.tar.gz" \
+            -C "$staging" renrencodex-connect README.md LICENSE THIRD_PARTY_NOTICES.md
+
+      - name: Attest standalone macOS connector
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: target/desktop-updater-artifact/renrencodex-connect-*-macos-universal.tar.gz
+
       - name: Upload macOS updater package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -265,6 +322,10 @@ jobs:
     environment: desktop-updater-release
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
     env:
       VITE_API_BASE_URL: https://renrencodex.com
       VITE_WEB_BASE_URL: https://renrencodex.com
@@ -294,6 +355,7 @@ jobs:
           libssl-dev
           libayatana-appindicator3-dev
           librsvg2-dev
+          musl-tools
           patchelf
           rpm
 
@@ -303,6 +365,7 @@ jobs:
           bun scripts/sync-from-upstream.ts --public-ready
           bun install --frozen-lockfile
           rustup default stable
+          rustup target add x86_64-unknown-linux-musl
           bun run --cwd apps/desktop typecheck
 
       - name: Build AppImage, DEB, RPM, and updater signature
@@ -314,8 +377,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          bun run --cwd apps/desktop connector:prepare
           config_path="$RUNNER_TEMP/tauri.updater.conf.json"
-          bun -e 'await Bun.write(process.argv[1], JSON.stringify({productName:"RenrenCodex",bundle:{createUpdaterArtifacts:true},plugins:{updater:{pubkey:process.env.RENRENCODEX_UPDATER_PUBLIC_KEY?.trim()}}}, null, 2))' "$config_path"
+          bun -e 'await Bun.write(process.argv[1], JSON.stringify({productName:"RenrenCodex",bundle:{createUpdaterArtifacts:true,externalBin:["binaries/renrencodex-connect"]},plugins:{updater:{pubkey:process.env.RENRENCODEX_UPDATER_PUBLIC_KEY?.trim()}}}, null, 2))' "$config_path"
           bun run --cwd apps/desktop tauri build --ci \
             --bundles deb,rpm,appimage --config "$config_path"
 
@@ -334,6 +398,29 @@ jobs:
           cp "${appimages[0]}.sig" "$output/renrencodex-desktop-$RELEASE_VERSION-x86_64.AppImage.sig"
           cp "${debs[0]}" "$output/renrencodex-desktop-$RELEASE_VERSION-x86_64.deb"
           cp "${rpms[0]}" "$output/renrencodex-desktop-$RELEASE_VERSION-x86_64.rpm"
+
+          cargo build --locked --release --package renrencodex-connect \
+            --target x86_64-unknown-linux-musl
+          connector="target/x86_64-unknown-linux-musl/release/renrencodex-connect"
+          [[ "$("$connector" --version)" == "renrencodex-connect $RELEASE_VERSION" ]]
+          file "$connector" | grep -Eq 'static|static-pie'
+          if readelf -d "$connector" 2>/dev/null | grep -q NEEDED; then
+            echo "Linux connector unexpectedly has dynamic dependencies" >&2
+            exit 1
+          fi
+          staging="$RUNNER_TEMP/renrencodex-connect-linux-x64"
+          mkdir "$staging"
+          cp "$connector" "$staging/renrencodex-connect"
+          cp apps/renrencodex-connect/README.md "$staging/README.md"
+          cp LICENSE "$staging/LICENSE"
+          cp THIRD_PARTY_NOTICES.md "$staging/THIRD_PARTY_NOTICES.md"
+          tar -czf "$output/renrencodex-connect-$RELEASE_VERSION-linux-x64.tar.gz" \
+            -C "$staging" renrencodex-connect README.md LICENSE THIRD_PARTY_NOTICES.md
+
+      - name: Attest standalone Linux connector
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: target/desktop-updater-artifact/renrencodex-connect-*-linux-x64.tar.gz
 
       - name: Upload Linux updater package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -400,6 +487,9 @@ jobs:
           verify_updater "target/desktop-updater-input/renrencodex-desktop-$RELEASE_VERSION-x64.msi"
           verify_updater "target/desktop-updater-input/renrencodex-desktop-$RELEASE_VERSION-universal.app.tar.gz"
           verify_updater "target/desktop-updater-input/renrencodex-desktop-$RELEASE_VERSION-x86_64.AppImage"
+          test -s "target/desktop-updater-input/renrencodex-connect-$RELEASE_VERSION-windows-x64.zip"
+          test -s "target/desktop-updater-input/renrencodex-connect-$RELEASE_VERSION-macos-universal.tar.gz"
+          test -s "target/desktop-updater-input/renrencodex-connect-$RELEASE_VERSION-linux-x64.tar.gz"
 
           bun run --cwd apps/desktop release:prepare-all -- \
             --input-dir target/desktop-updater-input \

@@ -33,6 +33,7 @@ TypeScript 与 Rust 构建，可运行于 Windows、macOS 和 Linux。本仓库�
 | 路径                        | 用途                                     |
 | --------------------------- | ---------------------------------------- |
 | `apps/desktop`              | React/Vite 桌面应用与 Tauri 壳           |
+| `apps/renrencodex-connect`  | 可独立运行的 SSH/原生 TCP 连接器         |
 | `packages/api-client`       | `/api/v1` TypeScript SDK、认证流程和 DTO |
 | `packages/client-contracts` | 客户端共享 Zod 契约与连接票据类型        |
 | `packages/client-core`      | 路由、查询键与 Desktop PKCE 授权逻辑     |
@@ -104,6 +105,20 @@ cargo test --workspace
 bun run desktop:build
 ```
 
+### 独立连接器
+
+`renrencodex-connect` 可以不安装 Desktop 而独立运行，用于通过官方 Preview 域名连接 SSH 或原生
+TCP 端口。官网提供
+[Windows x64](https://renrencodex.com/downloads/renrencodex-connect-windows-x64.zip)、
+[macOS Universal](https://renrencodex.com/downloads/renrencodex-connect-macos-universal.tar.gz) 和
+[Linux x64 静态版](https://renrencodex.com/downloads/renrencodex-connect-linux-x64.tar.gz)，下载后请
+核对 [SHA-256 清单](https://renrencodex.com/downloads/renrencodex-connect-SHA256SUMS)。
+
+连接器与 Desktop 共用版本号和源码提交，但独立压缩包不会自动更新。当前证书免费渠道的 Windows
+文件没有 Authenticode 签名，macOS 文件为 ad-hoc 签名且未经公证，Linux 压缩包没有发行版仓库签名。
+安装步骤、系统信任提示、来源证明校验和用法见
+[`apps/renrencodex-connect/README.md`](apps/renrencodex-connect/README.md)。
+
 发布前请为自己的品牌配置更新公钥、签名私钥和发布地址。Tauri 更新签名只验证更新来源，不能替代
 Windows Authenticode、Apple Developer ID 与公证，或 Linux 软件仓库签名。
 
@@ -152,6 +167,7 @@ boundaries for its own update and signing infrastructure.
 | Path                        | Purpose                                                            |
 | --------------------------- | ------------------------------------------------------------------ |
 | `apps/desktop`              | React/Vite desktop app and Tauri shell                             |
+| `apps/renrencodex-connect`  | Standalone SSH and native TCP connector                            |
 | `packages/api-client`       | `/api/v1` TypeScript SDK, authentication, and DTOs                 |
 | `packages/client-contracts` | Shared Zod contracts and connection-ticket types                   |
 | `packages/client-core`      | Routing, query keys, and Desktop PKCE authorization                |
@@ -227,6 +243,22 @@ Build a native installer with:
 ```bash
 bun run desktop:build
 ```
+
+### Standalone connector
+
+`renrencodex-connect` runs without Desktop and connects SSH or native TCP ports through the
+official Preview domain. Download the
+[Windows x64](https://renrencodex.com/downloads/renrencodex-connect-windows-x64.zip),
+[macOS Universal](https://renrencodex.com/downloads/renrencodex-connect-macos-universal.tar.gz),
+or [Linux x64 static](https://renrencodex.com/downloads/renrencodex-connect-linux-x64.tar.gz)
+archive, then verify the
+[SHA-256 manifest](https://renrencodex.com/downloads/renrencodex-connect-SHA256SUMS).
+
+The connector shares the Desktop version and source revision, but standalone archives do not
+self-update. The current certificate-free channel has no Windows Authenticode signature, uses
+ad-hoc signing without notarization on macOS, and has no Linux distribution-repository signature.
+See [`apps/renrencodex-connect/README.md`](apps/renrencodex-connect/README.md) for installation,
+trust warnings, provenance verification, and usage.
 
 Before distributing a branded build, configure your own update public key, signing private key,
 and release URL. Tauri update signatures authenticate application updates; they do not replace

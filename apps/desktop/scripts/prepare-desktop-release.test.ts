@@ -96,6 +96,9 @@ describe("cross-platform Desktop release layout", () => {
       linuxSignature: "renrencodex-desktop-0.2.14-x86_64.AppImage.sig",
       linuxDeb: "renrencodex-desktop-0.2.14-x86_64.deb",
       linuxRpm: "renrencodex-desktop-0.2.14-x86_64.rpm",
+      connectorWindows: "renrencodex-connect-0.2.14-windows-x64.zip",
+      connectorMacos: "renrencodex-connect-0.2.14-macos-universal.tar.gz",
+      connectorLinux: "renrencodex-connect-0.2.14-linux-x64.tar.gz",
     });
   });
 
@@ -144,6 +147,18 @@ describe("cross-platform Desktop release layout", () => {
       ],
       ["renrencodex-linux-x64.deb", `desktop/stable/linux-x86_64/${fixture.layout.linuxDeb}`],
       ["renrencodex-linux-x64.rpm", `desktop/stable/linux-x86_64/${fixture.layout.linuxRpm}`],
+      [
+        "renrencodex-connect-windows-x64.zip",
+        `desktop/stable/connectors/windows-x86_64/${fixture.layout.connectorWindows}`,
+      ],
+      [
+        "renrencodex-connect-macos-universal.tar.gz",
+        `desktop/stable/connectors/macos-universal/${fixture.layout.connectorMacos}`,
+      ],
+      [
+        "renrencodex-connect-linux-x64.tar.gz",
+        `desktop/stable/connectors/linux-x86_64/${fixture.layout.connectorLinux}`,
+      ],
     ] as const;
     for (const [fixed, versioned] of fixedAndVersioned) {
       expect(await Bun.file(join(downloads, fixed)).arrayBuffer()).toEqual(
@@ -153,7 +168,19 @@ describe("cross-platform Desktop release layout", () => {
     const checksums = (await readFile(join(fixture.outputDirectory, "SHA256SUMS"), "utf8"))
       .trim()
       .split("\n");
-    expect(checksums).toHaveLength(16);
+    expect(checksums).toHaveLength(24);
+    expect(await readFile(join(downloads, "renrencodex-connect-SHA256SUMS"), "utf8")).toContain(
+      "renrencodex-connect-windows-x64.zip",
+    );
+    expect(
+      await readFile(
+        join(
+          downloads,
+          `desktop/stable/connectors/renrencodex-connect-${fixture.version}-SHA256SUMS`,
+        ),
+        "utf8",
+      ),
+    ).toContain(`windows-x86_64/${fixture.layout.connectorWindows}`);
   });
 
   test("rejects a version that is not newer than the published high-water mark", async () => {

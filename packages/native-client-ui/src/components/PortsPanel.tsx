@@ -29,6 +29,24 @@ const EXPOSURE_LABEL: Record<PortExposureMode, string> = {
   tcp: "TCP",
 };
 
+const CONNECTOR_DOWNLOADS = [
+  {
+    label: "Windows x64",
+    href: "/downloads/renrencodex-connect-windows-x64.zip",
+    filename: "renrencodex-connect-windows-x64.zip",
+  },
+  {
+    label: "macOS Universal",
+    href: "/downloads/renrencodex-connect-macos-universal.tar.gz",
+    filename: "renrencodex-connect-macos-universal.tar.gz",
+  },
+  {
+    label: "Linux x64",
+    href: "/downloads/renrencodex-connect-linux-x64.tar.gz",
+    filename: "renrencodex-connect-linux-x64.tar.gz",
+  },
+] as const;
+
 function shellQuote(value: string): string {
   return `'${value.replaceAll("'", `'"'"'`)}'`;
 }
@@ -59,7 +77,7 @@ export function nativeEndpointCommand(
 }
 
 export function PortsPanel({ machineId, active = true }: { machineId: string; active?: boolean }) {
-  const { platform, nativeConnectorPath } = useClientHost();
+  const { platform, platformKind, nativeConnectorPath } = useClientHost();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [copiedPort, setCopiedPort] = useState<number | null>(null);
@@ -196,6 +214,30 @@ export function PortsPanel({ machineId, active = true }: { machineId: string; ac
           <span className="break-all text-zinc-600">
             预览域名示例：https://端口-01m6ape8w7yt4yd1neg3ccqwd8.preview.renrencodex.com
           </span>
+          {platformKind === "web" ? (
+            <span className="ml-1 inline-flex flex-wrap items-center gap-x-2">
+              <span>下载连接器：</span>
+              {CONNECTOR_DOWNLOADS.map((download) => (
+                <a
+                  key={download.href}
+                  href={download.href}
+                  download={download.filename}
+                  className="text-sky-500 hover:text-sky-400 hover:underline"
+                >
+                  {download.label}
+                </a>
+              ))}
+              <a
+                href="/downloads/renrencodex-connect-SHA256SUMS"
+                download="renrencodex-connect-SHA256SUMS"
+                className="text-sky-500 hover:text-sky-400 hover:underline"
+              >
+                SHA-256
+              </a>
+            </span>
+          ) : (
+            <span className="ml-1 text-emerald-600">Desktop 已内置连接器。</span>
+          )}
         </p>
         <button
           type="button"

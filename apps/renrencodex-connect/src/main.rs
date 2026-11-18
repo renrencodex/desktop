@@ -28,16 +28,18 @@ const STDIN_CHUNK_SIZE: usize = 16 * 1024;
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const TLS_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(10);
 const GATEWAY_RESPONSE_TIMEOUT: Duration = Duration::from_secs(20);
+const VERSION: &str = env!("RENRENCODEX_CONNECT_VERSION");
 
 #[derive(Debug, PartialEq, Eq)]
 enum Command {
     Proxy { host: String },
     Forward { host: String, listen: SocketAddr },
     Help,
+    Version,
 }
 
 fn usage() -> &'static str {
-    "Usage:\n  renrencodex-connect proxy <preview-host>\n  renrencodex-connect forward <preview-host> --listen <127.0.0.1:port|[::1]:port>\n"
+    "Usage:\n  renrencodex-connect proxy <preview-host>\n  renrencodex-connect forward <preview-host> --listen <127.0.0.1:port|[::1]:port>\n  renrencodex-connect --version\n"
 }
 
 fn validate_preview_host(value: &str) -> Result<String, String> {
@@ -71,6 +73,12 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Command, String>
     };
     if command == "--help" || command == "-h" || command == "help" {
         return Ok(Command::Help);
+    }
+    if command == "--version" || command == "-V" || command == "version" {
+        if args.next().is_some() {
+            return Err(format!("version accepts no arguments\n{}", usage()));
+        }
+        return Ok(Command::Version);
     }
     let host = validate_preview_host(
         &args
@@ -395,6 +403,10 @@ async fn main() -> ExitCode {
         print!("{}", usage());
         return ExitCode::SUCCESS;
     }
+    if command == Command::Version {
+        println!("renrencodex-connect {VERSION}");
+        return ExitCode::SUCCESS;
+    }
     let config = match tls_config() {
         Ok(config) => config,
         Err(error) => {
@@ -406,6 +418,7 @@ async fn main() -> ExitCode {
         Command::Proxy { host } => proxy(host, config).await,
         Command::Forward { host, listen } => forward(host, listen, config).await,
         Command::Help => unreachable!(),
+        Command::Version => unreachable!(),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -436,6 +449,12 @@ mod tests {
             validate_preview_host(&HOST.to_ascii_uppercase()).unwrap(),
             HOST
         );
+    }
+
+    #[test]
+    fn reports_the_desktop_release_version() {
+        assert_eq!(parse_args(["--version".into()]).unwrap(), Command::Version);
+        assert_eq!(VERSION.split('.').count(), 3);
     }
 
     #[test]

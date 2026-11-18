@@ -7,6 +7,7 @@ import { dirname, join } from "node:path";
 
 import {
   validateCiRepositoryVisibility,
+  validateManifestMetadata,
   validatePublicBoundary,
   validatePublicRepositoryHistory,
   validatePublicRepository,
@@ -41,6 +42,7 @@ function historyRepository(commits: ReadonlyArray<Readonly<Record<string, string
 
 const publicRoots = [
   "apps/desktop",
+  "apps/renrencodex-connect",
   "crates/client-native",
   "crates/client-protocol",
   "packages/api-client",
@@ -77,6 +79,11 @@ function validEntries(): TreeEntry[] {
       'import "@cloud-machine/client-contracts";\nimport "./local";\n',
     ),
     entry("apps/desktop/src/local.ts"),
+    entry(
+      "apps/renrencodex-connect/Cargo.toml",
+      '[package]\nname = "renrencodex-connect"\nversion.workspace = true\n',
+    ),
+    entry("apps/renrencodex-connect/src/main.rs", "fn main() {}\n"),
     entry("crates/client-native/src/lib.rs", "pub fn native() {}\n"),
     entry("crates/client-protocol/src/lib.rs", "pub fn protocol() {}\n"),
     packageEntry("packages/api-client", "@cloud-machine/api-client"),
@@ -90,6 +97,29 @@ function validEntries(): TreeEntry[] {
 
 test("accepts a complete client-only source tree", () => {
   expect(() => validatePublicBoundary(validEntries())).not.toThrow();
+});
+
+test("accepts reviewed historical snapshot paths but rejects arbitrary path sets", () => {
+  const source = { commit: "a".repeat(40), channel: "production" as const };
+  const historicalPaths = publicRoots.filter((path) => path !== "apps/renrencodex-connect");
+  expect(() =>
+    validateManifestMetadata({
+      schemaVersion: 2,
+      policy: "desktop-public-v1",
+      source,
+      paths: historicalPaths,
+      files: {},
+    }),
+  ).not.toThrow();
+  expect(() =>
+    validateManifestMetadata({
+      schemaVersion: 2,
+      policy: "desktop-public-v1",
+      source,
+      paths: historicalPaths.slice(1),
+      files: {},
+    }),
+  ).toThrow("public snapshot manifest metadata is invalid");
 });
 
 test("requires every allowlisted public root", () => {

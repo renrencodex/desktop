@@ -24,6 +24,9 @@ interface ReleaseLayout {
   readonly linuxSignature: string;
   readonly linuxDeb: string;
   readonly linuxRpm: string;
+  readonly connectorWindows: string;
+  readonly connectorMacos: string;
+  readonly connectorLinux: string;
 }
 
 export function desktopReleaseLayout(version: string): ReleaseLayout {
@@ -37,6 +40,9 @@ export function desktopReleaseLayout(version: string): ReleaseLayout {
     linuxSignature: `renrencodex-desktop-${version}-x86_64.AppImage.sig`,
     linuxDeb: `renrencodex-desktop-${version}-x86_64.deb`,
     linuxRpm: `renrencodex-desktop-${version}-x86_64.rpm`,
+    connectorWindows: `renrencodex-connect-${version}-windows-x64.zip`,
+    connectorMacos: `renrencodex-connect-${version}-macos-universal.tar.gz`,
+    connectorLinux: `renrencodex-connect-${version}-linux-x64.tar.gz`,
   };
 }
 
@@ -120,6 +126,12 @@ async function main(): Promise<void> {
     [layout.linuxSignature, `desktop/stable/linux-x86_64/${layout.linuxSignature}`],
     [layout.linuxDeb, `desktop/stable/linux-x86_64/${layout.linuxDeb}`],
     [layout.linuxRpm, `desktop/stable/linux-x86_64/${layout.linuxRpm}`],
+    [
+      layout.connectorWindows,
+      `desktop/stable/connectors/windows-x86_64/${layout.connectorWindows}`,
+    ],
+    [layout.connectorMacos, `desktop/stable/connectors/macos-universal/${layout.connectorMacos}`],
+    [layout.connectorLinux, `desktop/stable/connectors/linux-x86_64/${layout.connectorLinux}`],
   ]);
   for (const [inputName, targetName] of versionedTargets) {
     await copyExclusive(source(inputName), resolve(downloadsRoot, targetName));
@@ -131,10 +143,41 @@ async function main(): Promise<void> {
     [layout.linuxAppImage, "renrencodex-linux-x64.AppImage"],
     [layout.linuxDeb, "renrencodex-linux-x64.deb"],
     [layout.linuxRpm, "renrencodex-linux-x64.rpm"],
+    [layout.connectorWindows, "renrencodex-connect-windows-x64.zip"],
+    [layout.connectorMacos, "renrencodex-connect-macos-universal.tar.gz"],
+    [layout.connectorLinux, "renrencodex-connect-linux-x64.tar.gz"],
   ]);
   for (const [inputName, targetName] of fixedTargets) {
     await copyExclusive(source(inputName), resolve(downloadsRoot, targetName));
   }
+
+  const connectorVersionedChecksum = `desktop/stable/connectors/renrencodex-connect-${version}-SHA256SUMS`;
+  const connectorFixedChecksum = "renrencodex-connect-SHA256SUMS";
+  const connectorInputs = [
+    [layout.connectorWindows, `windows-x86_64/${layout.connectorWindows}`],
+    [layout.connectorMacos, `macos-universal/${layout.connectorMacos}`],
+    [layout.connectorLinux, `linux-x86_64/${layout.connectorLinux}`],
+  ] as const;
+  const versionedConnectorChecksums: string[] = [];
+  const fixedConnectorChecksums: string[] = [];
+  for (const [inputName, versionedName] of connectorInputs) {
+    const hash = await digest(source(inputName));
+    const fixedName = fixedTargets.get(inputName);
+    if (!fixedName) throw new Error(`No fixed connector target for ${inputName}`);
+    versionedConnectorChecksums.push(`${hash}  ${versionedName}`);
+    fixedConnectorChecksums.push(`${hash}  ${fixedName}`);
+  }
+  await mkdir(resolve(downloadsRoot, "desktop/stable/connectors"), { recursive: true });
+  await writeFile(
+    resolve(downloadsRoot, connectorVersionedChecksum),
+    `${versionedConnectorChecksums.join("\n")}\n`,
+    { flag: "wx" },
+  );
+  await writeFile(
+    resolve(downloadsRoot, connectorFixedChecksum),
+    `${fixedConnectorChecksums.join("\n")}\n`,
+    { flag: "wx" },
+  );
 
   await mkdir(resolve(downloadsRoot, "desktop/stable"), { recursive: true });
   await writeFile(
@@ -151,6 +194,8 @@ async function main(): Promise<void> {
   const checksumTargets = [
     ...versionedTargets.values(),
     ...fixedTargets.values(),
+    connectorVersionedChecksum,
+    connectorFixedChecksum,
     "desktop/stable/highest.json",
     "desktop/stable/latest.json",
   ];

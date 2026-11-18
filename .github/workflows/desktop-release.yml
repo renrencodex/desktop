@@ -328,6 +328,10 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
+          & bun run --cwd apps/desktop connector:prepare
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows connector build failed with exit code $LASTEXITCODE"
+          }
           $configurationPath = Join-Path $env:RUNNER_TEMP "tauri.release.conf.json"
           $configuration = [ordered]@{
             build = [ordered]@{
@@ -335,6 +339,7 @@ jobs:
             }
             bundle = [ordered]@{
               createUpdaterArtifacts = $true
+              externalBin = @("binaries/renrencodex-connect")
               windows = [ordered]@{
                 certificateThumbprint = $env:WINDOWS_CERTIFICATE_THUMBPRINT
                 digestAlgorithm = "sha256"
@@ -526,9 +531,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          CONNECTOR_TARGET=universal-apple-darwin \
+            bun run --cwd apps/desktop connector:prepare
           configuration_path="$RUNNER_TEMP/tauri.release.conf.json"
           trap 'rm -f "$configuration_path"' EXIT
-          printf '%s\n' '{"build":{"beforeBuildCommand":""}}' > "$configuration_path"
+          printf '%s\n' '{"build":{"beforeBuildCommand":""},"bundle":{"externalBin":["binaries/renrencodex-connect"]}}' > "$configuration_path"
           bun run --cwd apps/desktop tauri build --ci --target universal-apple-darwin --bundles app,dmg --config "$configuration_path"
 
       - name: Notarize and staple app and DMG

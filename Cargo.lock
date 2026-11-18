@@ -3343,14 +3343,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
+name = "renrencodex-connect"
+version = "0.0.0"
+dependencies = [
+ "rustls",
+ "rustls-native-certs",
+ "serde_json",
+ "tokio",
+ "tokio-rustls",
+]
+
+[[package]]
 name = "renrencodex-desktop"
 version = "0.0.0"
 dependencies = [
  "client-native",
  "dbus",
  "keyring",
- "rustls",
- "rustls-native-certs",
  "serde_json",
  "tauri",
  "tauri-build",
@@ -3359,8 +3368,6 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
- "tokio",
- "tokio-rustls",
  "webview2-com",
  "windows",
 ]

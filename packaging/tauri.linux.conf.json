@@ -1,3 +1,6 @@
 {
-  "productName": "RenrenCodex"
+  "productName": "RenrenCodex",
+  "bundle": {
+    "externalBin": ["binaries/renrencodex-connect"]
+  }
 }

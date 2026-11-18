@@ -50,7 +50,7 @@ jobs:
             os: windows-latest
             artifact: windows-x64
             bundles: nsis,msi
-            config: ""
+            config: --config src-tauri/tauri.connector.conf.json
           - name: Linux x64
             os: ubuntu-24.04
             artifact: linux-x64
@@ -101,6 +101,9 @@ jobs:
 
       - name: Verify desktop TypeScript
         run: bun run --cwd apps/desktop typecheck
+
+      - name: Build native protocol connector
+        run: bun run --cwd apps/desktop connector:prepare
 
       - name: Build desktop packages
         run: >-
@@ -195,9 +198,15 @@ jobs:
       - name: Verify desktop TypeScript
         run: bun run --cwd apps/desktop typecheck
 
+      - name: Build Universal native protocol connector
+        env:
+          CONNECTOR_TARGET: universal-apple-darwin
+        run: bun run --cwd apps/desktop connector:prepare
+
       - name: Build ad-hoc signed Universal packages
         run: >-
           bun run --cwd apps/desktop tauri build --ci
+          --config src-tauri/tauri.connector.conf.json
           --target universal-apple-darwin
           --bundles app,dmg
 

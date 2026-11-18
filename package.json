@@ -24,7 +24,7 @@
     "test": "bun test --path-ignore-patterns='packages/native-client-ui/src/workbench-parity.test.ts' apps/desktop packages scripts",
     "build": "bun run --cwd apps/desktop build",
     "desktop:dev": "bun run --cwd apps/desktop dev",
-    "desktop:build": "bun run --cwd apps/desktop tauri build",
+    "desktop:build": "bun run --cwd apps/desktop bundle",
     "generate:client-protocol": "cargo run -q -p client-protocol --bin generate-types && prettier --write packages/platform-api/src/generated/client-protocol.ts"
   },
   "devDependencies": {

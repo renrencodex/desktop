@@ -41,6 +41,7 @@ const REVIEWED_LICENSE_SHA256 = new Set([MIT_LICENSE_SHA256, LEGACY_APACHE_2_0_L
 
 const publicManagedPaths = [
   "apps/desktop",
+  "apps/renrencodex-connect",
   "crates/client-native",
   "crates/client-protocol",
   "packages/api-client",
@@ -50,6 +51,9 @@ const publicManagedPaths = [
   "packages/platform-api",
   "packages/workspace-ui",
 ] as const;
+const historicalPublicManagedPathSets: ReadonlyArray<readonly string[]> = [
+  publicManagedPaths.filter((path) => path !== "apps/renrencodex-connect"),
+];
 
 const publicRepositoryFiles = new Set([
   ".gitattributes",
@@ -191,7 +195,7 @@ function samePaths(actual: readonly string[], expected: readonly string[]): bool
   return JSON.stringify(actual) === JSON.stringify(expected);
 }
 
-function validateManifestMetadata(manifest: Manifest): void {
+export function validateManifestMetadata(manifest: Manifest): void {
   if (!/^[0-9a-f]{40}$/.test(manifest.source.commit)) {
     throw new Error("snapshot manifest commit is invalid");
   }
@@ -208,7 +212,10 @@ function validateManifestMetadata(manifest: Manifest): void {
     }
     return;
   }
-  if (manifest.policy !== "desktop-public-v1" || !samePaths(manifest.paths, publicManagedPaths)) {
+  const hasReviewedPaths =
+    samePaths(manifest.paths, publicManagedPaths) ||
+    historicalPublicManagedPathSets.some((paths) => samePaths(manifest.paths, paths));
+  if (manifest.policy !== "desktop-public-v1" || !hasReviewedPaths) {
     throw new Error("public snapshot manifest metadata is invalid");
   }
 }

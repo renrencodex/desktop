@@ -1,5 +1,5 @@
 import { chmod, copyFile, mkdir } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 
 const desktopRoot = resolve(import.meta.dir, "..");
 const repositoryRoot = resolve(desktopRoot, "../..");
@@ -26,8 +26,6 @@ async function build(target: string): Promise<string> {
     "--locked",
     "--release",
     "--package",
-    "renrencodex-desktop",
-    "--bin",
     "renrencodex-connect",
     "--target",
     target,
@@ -45,19 +43,6 @@ if (target === "universal-apple-darwin") {
   const sidecarOutput = join(binariesDir, "renrencodex-connect-universal-apple-darwin");
   await run(["lipo", "-create", "-output", sidecarOutput, arm, intel]);
   await chmod(sidecarOutput, 0o755);
-
-  // Tauri joins only the main Cargo binary for the synthetic Universal target.
-  // Pre-populate the additional project binary where the macOS bundler expects it.
-  const projectOutput = join(
-    repositoryRoot,
-    "target",
-    "universal-apple-darwin",
-    "release",
-    "renrencodex-connect",
-  );
-  await mkdir(dirname(projectOutput), { recursive: true });
-  await copyFile(sidecarOutput, projectOutput);
-  await chmod(projectOutput, 0o755);
 } else {
   const source = await build(target);
   const extension = target.includes("windows") ? ".exe" : "";

@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+  "apps/renrencodex-connect",
   "crates/client-native",
   "crates/client-protocol",
   "apps/desktop/src-tauri",
