@@ -219,6 +219,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          CONNECTOR_TARGET=universal-apple-darwin \
+            bun run --cwd apps/desktop connector:prepare
           config_path="$RUNNER_TEMP/tauri.updater.conf.json"
           bun -e 'await Bun.write(process.argv[1], JSON.stringify({bundle:{createUpdaterArtifacts:true},plugins:{updater:{pubkey:process.env.RENRENCODEX_UPDATER_PUBLIC_KEY?.trim()}}}, null, 2))' "$config_path"
           bun run --cwd apps/desktop tauri build --ci \

@@ -189,6 +189,9 @@ describe("Desktop Windows installer branding", () => {
       "utf8",
     );
     const pathComponent = wixTemplate.match(/<Component Id="Path"[\s\S]*?<\/Component>/)?.[0];
+    const binaryComponents = wixTemplate.match(
+      /{{#each binaries as \|bin\| ~}}[\s\S]*?{{\/each~}}/,
+    )?.[0];
 
     expect(config.productName).toBe("人人Codex");
     expect(config.version).toBe("../package.json");
@@ -209,6 +212,11 @@ describe("Desktop Windows installer branding", () => {
     expect(pathComponent).not.toContain(
       '<File Id="Path" Source="{{main_binary_path}}" KeyPath="yes"',
     );
+    expect(binaryComponents).toContain('<File Id="Bin_{{ bin.id }}" Source="{{bin.path}}"/>');
+    expect(binaryComponents).not.toContain('Source="{{bin.path}}" KeyPath="yes"');
+    expect(binaryComponents).toContain('Root="HKCU"');
+    expect(binaryComponents).toContain('Name="Binary {{ bin.id }} Component"');
+    expect(binaryComponents).toContain('KeyPath="yes"');
     expect(wixTemplate).not.toContain('InstallScope="perMachine"');
     expect(wixTemplate).toContain(
       '<Directory Id="ApplicationProgramsFolder" Name="{{product_name}}"/>',

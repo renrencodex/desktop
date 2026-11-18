@@ -195,6 +195,7 @@ fn prepare_native_connector(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     }
     #[cfg(target_os = "windows")]
     {
+        let _ = app;
         Ok(source)
     }
 }
