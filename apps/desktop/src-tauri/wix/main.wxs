@@ -194,7 +194,7 @@
                 <File Id="Bin_{{ bin.id }}" Source="{{bin.path}}"/>
                 <!-- Per-user components must use an HKCU registry value as their key path. -->
                 <RegistryValue Root="HKCU"
-                               Key="Software\\{{manufacturer}}\\{{product_name}}"
+                               Key="Software\\{{../manufacturer}}\\{{../product_name}}"
                                Name="Binary {{ bin.id }} Component"
                                Type="integer"
                                Value="1"

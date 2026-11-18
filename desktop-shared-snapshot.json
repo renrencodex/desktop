@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "policy": "desktop-public-v1",
   "source": {
-    "commit": "c84df95907c15e7dca20f6a74ebe4e76d72cd07f",
+    "commit": "dadc1b25a5400d38e42b54f3fbb0b00a76e13a34",
     "channel": "production"
   },
   "paths": [
@@ -60,12 +60,12 @@
     "apps/desktop/src-tauri/tauri.conf.json": "81603db6f348428955677bfca2a201f2675a7126655fb8a6d077d3186183f9ed",
     "apps/desktop/src-tauri/tauri.connector.conf.json": "f24bdcfebb623b1e5d5fa829b7c202b12430545fd867cacfddea98523a5f9ca1",
     "apps/desktop/src-tauri/tauri.windows.conf.json": "c29bb45d50fc988bd16d71abfc8f11ac212c439050d8f2d4448c02780cf03c13",
-    "apps/desktop/src-tauri/wix/main.wxs": "fe3fe76ff1d1fb78578df24ba38510377f88960cd419bc7fa34f6ab54bd2d9ff",
+    "apps/desktop/src-tauri/wix/main.wxs": "cf62afa5134c131a1eda03dddd31116264d3e9ad6f02b7c9c5f08ebbdec78ffa",
     "apps/desktop/src-tauri/wix/zh-CN.wxl": "4475cc4c9b5c87adf39161df2cd0ed8bd6b0f8db91e0a988f1ff5d45e5bae814",
     "apps/desktop/src/app.css": "422580946805254d90f67a29eeafb03e2db47eea7418597e24b7bde1ed603b20",
     "apps/desktop/src/config.test.ts": "00b0540731a6c121193188b6caa5330c4faec48637bcda570e8905ef24fe66e9",
     "apps/desktop/src/config.ts": "fe885d64c1cbecd5ed35ce59ae58ac6883f383ea5a878f6612f90275484dfdd6",
-    "apps/desktop/src/desktop-security.test.ts": "e3800e121bac14f5faf254dc9988841bd9e0a1095d1789c66ad53ddef8f6546f",
+    "apps/desktop/src/desktop-security.test.ts": "87fdc8747aadde3459482e6b62ae25e856a6b19178422b33a0c82bb5cf192c97",
     "apps/desktop/src/desktop-startup.test.ts": "b8e22cfb1049cf7282224be30439c40650d54faebec9962e96c368e8215f3468",
     "apps/desktop/src/desktop-startup.ts": "43cfaa9a5e7fdb37f1843657f6c4914742b6d626a0fe8efb068b2143787826ad",
     "apps/desktop/src/desktop-viewport.test.ts": "922ac31ce131b7eec723e160df48e42a726ac83557eb13d371c39de8f50f62bb",

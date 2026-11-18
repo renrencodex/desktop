@@ -215,6 +215,9 @@ describe("Desktop Windows installer branding", () => {
     expect(binaryComponents).toContain('<File Id="Bin_{{ bin.id }}" Source="{{bin.path}}"/>');
     expect(binaryComponents).not.toContain('Source="{{bin.path}}" KeyPath="yes"');
     expect(binaryComponents).toContain('Root="HKCU"');
+    expect(binaryComponents).toContain(
+      'Key="Software\\\\{{../manufacturer}}\\\\{{../product_name}}"',
+    );
     expect(binaryComponents).toContain('Name="Binary {{ bin.id }} Component"');
     expect(binaryComponents).toContain('KeyPath="yes"');
     expect(wixTemplate).not.toContain('InstallScope="perMachine"');
