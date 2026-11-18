@@ -34,12 +34,40 @@ const VERSION: &str = env!("RENRENCODEX_CONNECT_VERSION");
 enum Command {
     Proxy { host: String },
     Forward { host: String, listen: SocketAddr },
-    Help,
+    Help(HelpTopic),
     Version,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum HelpTopic {
+    Global,
+    Proxy,
+    Forward,
+}
+
 fn usage() -> &'static str {
-    "Usage:\n  renrencodex-connect proxy <preview-host>\n  renrencodex-connect forward <preview-host> --listen <127.0.0.1:port|[::1]:port>\n  renrencodex-connect --version\n"
+    "RenrenCodex connector for SSH and native TCP preview ports.\n\n\
+Usage:\n  renrencodex-connect proxy <preview-host>\n  renrencodex-connect forward <preview-host> --listen <127.0.0.1:port|[::1]:port>\n  renrencodex-connect --help\n  renrencodex-connect --version\n\n\
+Commands:\n  proxy     Carry one raw connection over stdin/stdout for SSH ProxyCommand.\n  forward   Forward a local loopback listener to a native TCP preview port.\n\n\
+Examples:\n  ssh -o 'ProxyCommand=renrencodex-connect proxy %h' root@22-<machine-id>.preview.renrencodex.com\n  renrencodex-connect forward 18471-<machine-id>.preview.renrencodex.com --listen 127.0.0.1:18471\n\n\
+Notes:\n  Pass the preview hostname only, without https://, a path, or -p 443.\n  The machine must be online and the SSH/TCP port must be set to Open in the port panel.\n  Local forwarding is restricted to 127.0.0.1 or ::1.\n\n\
+Run 'renrencodex-connect <command> --help' for command-specific help.\n"
+}
+
+fn proxy_usage() -> &'static str {
+    "Use the connector as an SSH ProxyCommand.\n\n\
+Usage:\n  renrencodex-connect proxy <preview-host>\n\n\
+Example:\n  ssh -o 'ProxyCommand=renrencodex-connect proxy %h' root@22-<machine-id>.preview.renrencodex.com\n\n\
+The proxy command carries raw bytes over stdin/stdout. SSH authentication is still handled by\n\
+the SSH server inside the cloud machine. Do not run SSH with -p 443.\n"
+}
+
+fn forward_usage() -> &'static str {
+    "Forward a native TCP preview port to a local loopback address.\n\n\
+Usage:\n  renrencodex-connect forward <preview-host> --listen <127.0.0.1:port|[::1]:port>\n\n\
+Examples:\n  renrencodex-connect forward 18471-<machine-id>.preview.renrencodex.com --listen 127.0.0.1:18471\n  renrencodex-connect forward 18471-<machine-id>.preview.renrencodex.com --listen 127.0.0.1:28471\n\n\
+Keep the command running while the local application uses the listener. Press Ctrl-C to stop.\n\
+The listener cannot bind to a non-loopback address.\n"
 }
 
 fn validate_preview_host(value: &str) -> Result<String, String> {
@@ -69,10 +97,10 @@ fn validate_preview_host(value: &str) -> Result<String, String> {
 fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Command, String> {
     let mut args = args.into_iter();
     let Some(command) = args.next() else {
-        return Ok(Command::Help);
+        return Ok(Command::Help(HelpTopic::Global));
     };
     if command == "--help" || command == "-h" || command == "help" {
-        return Ok(Command::Help);
+        return Ok(Command::Help(HelpTopic::Global));
     }
     if command == "--version" || command == "-V" || command == "version" {
         if args.next().is_some() {
@@ -80,21 +108,41 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Command, String>
         }
         return Ok(Command::Version);
     }
-    let host = validate_preview_host(
-        &args
-            .next()
-            .ok_or_else(|| format!("missing preview host\n{}", usage()))?,
-    )?;
     match command.as_str() {
         "proxy" => {
-            if args.next().is_some() {
-                return Err(format!("proxy accepts exactly one host\n{}", usage()));
+            let value = args
+                .next()
+                .ok_or_else(|| format!("missing preview host\n{}", proxy_usage()))?;
+            if matches!(value.as_str(), "--help" | "-h" | "help") {
+                if args.next().is_some() {
+                    return Err(format!(
+                        "proxy help accepts no arguments\n{}",
+                        proxy_usage()
+                    ));
+                }
+                return Ok(Command::Help(HelpTopic::Proxy));
             }
+            if args.next().is_some() {
+                return Err(format!("proxy accepts exactly one host\n{}", proxy_usage()));
+            }
+            let host = validate_preview_host(&value)?;
             Ok(Command::Proxy { host })
         }
         "forward" => {
+            let value = args
+                .next()
+                .ok_or_else(|| format!("missing preview host\n{}", forward_usage()))?;
+            if matches!(value.as_str(), "--help" | "-h" | "help") {
+                if args.next().is_some() {
+                    return Err(format!(
+                        "forward help accepts no arguments\n{}",
+                        forward_usage()
+                    ));
+                }
+                return Ok(Command::Help(HelpTopic::Forward));
+            }
             if args.next().as_deref() != Some("--listen") {
-                return Err(format!("forward requires --listen\n{}", usage()));
+                return Err(format!("forward requires --listen\n{}", forward_usage()));
             }
             let listen = args
                 .next()
@@ -108,8 +156,9 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Command, String>
                 return Err("local forward listener port must be non-zero".into());
             }
             if args.next().is_some() {
-                return Err(format!("unexpected forward arguments\n{}", usage()));
+                return Err(format!("unexpected forward arguments\n{}", forward_usage()));
             }
+            let host = validate_preview_host(&value)?;
             Ok(Command::Forward { host, listen })
         }
         _ => Err(format!("unknown command: {command}\n{}", usage())),
@@ -399,13 +448,23 @@ async fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    if command == Command::Help {
-        print!("{}", usage());
-        return ExitCode::SUCCESS;
-    }
-    if command == Command::Version {
-        println!("renrencodex-connect {VERSION}");
-        return ExitCode::SUCCESS;
+    match &command {
+        Command::Help(topic) => {
+            print!(
+                "{}",
+                match topic {
+                    HelpTopic::Global => usage(),
+                    HelpTopic::Proxy => proxy_usage(),
+                    HelpTopic::Forward => forward_usage(),
+                }
+            );
+            return ExitCode::SUCCESS;
+        }
+        Command::Version => {
+            println!("renrencodex-connect {VERSION}");
+            return ExitCode::SUCCESS;
+        }
+        _ => {}
     }
     let config = match tls_config() {
         Ok(config) => config,
@@ -417,7 +476,7 @@ async fn main() -> ExitCode {
     let result = match command {
         Command::Proxy { host } => proxy(host, config).await,
         Command::Forward { host, listen } => forward(host, listen, config).await,
-        Command::Help => unreachable!(),
+        Command::Help(_) => unreachable!(),
         Command::Version => unreachable!(),
     };
     match result {
@@ -455,6 +514,30 @@ mod tests {
     fn reports_the_desktop_release_version() {
         assert_eq!(parse_args(["--version".into()]).unwrap(), Command::Version);
         assert_eq!(VERSION.split('.').count(), 3);
+    }
+
+    #[test]
+    fn provides_global_and_command_specific_help() {
+        assert_eq!(
+            parse_args(Vec::<String>::new()).unwrap(),
+            Command::Help(HelpTopic::Global)
+        );
+        assert_eq!(
+            parse_args(["--help".into()]).unwrap(),
+            Command::Help(HelpTopic::Global)
+        );
+        assert_eq!(
+            parse_args(["proxy".into(), "--help".into()]).unwrap(),
+            Command::Help(HelpTopic::Proxy)
+        );
+        assert_eq!(
+            parse_args(["forward".into(), "-h".into()]).unwrap(),
+            Command::Help(HelpTopic::Forward)
+        );
+        assert!(usage().contains("ProxyCommand=renrencodex-connect proxy %h"));
+        assert!(usage().contains("without https://"));
+        assert!(proxy_usage().contains("Do not run SSH with -p 443"));
+        assert!(forward_usage().contains("Press Ctrl-C to stop"));
     }
 
     #[test]

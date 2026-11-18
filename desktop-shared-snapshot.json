@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "policy": "desktop-public-v1",
   "source": {
-    "commit": "d3e6f48951a3d1f5425e7ae3b9fc6b9783ab54b9",
+    "commit": "86562a5cc9768d66997a8cc9756567b41c7cc1af",
     "channel": "production"
   },
   "paths": [
@@ -20,7 +20,7 @@
   "files": {
     "apps/desktop/.env.example": "87ed11742942f030b63fa54811a3d6694da0d1a7c4cdfaf66348fa18ebefe82d",
     "apps/desktop/index.html": "eac75b77323a1569edff497db76ab5bd14bdfc176f33564dce194a25f4cf5e07",
-    "apps/desktop/package.json": "02f46bfe33f84f9df531cf94a8e665167898def263d0a0f0eef47c3f35d4b7c2",
+    "apps/desktop/package.json": "6602ebaddacba2e523c4ff343f88b918040623c65d7fdc23216ca168cc4e4269",
     "apps/desktop/scripts/build-windows-release.test.ts": "9d4f4a4b0257d38ccd1263719c01845bc6c2122c707b08e71f3195263c09e789",
     "apps/desktop/scripts/build-windows-release.ts": "c1c614457becd3c025f4e233ae7a047cb06a9e083ccde3b61369b89a6f6a304b",
     "apps/desktop/scripts/file-preview-retry.ts": "88b1484d3e2bc412bc3e2b5a083c89e4e15ab8fcb29f71d421ad13f1ccb03c25",
@@ -82,8 +82,8 @@
     "apps/desktop/vite.config.ts": "4a727c7241fc60cdff86e4138d61db5bcc155eeede720db6a886dc8b5689f5ef",
     "apps/renrencodex-connect/build.rs": "a34a1ecbff78dd8e1250796865d6e9d62ee12f4ddfd3b661a7252a947a6a0096",
     "apps/renrencodex-connect/Cargo.toml": "b82f6c0b4f597027f37759ce8cf4147e385fe76d6c12d63350d322bde631a730",
-    "apps/renrencodex-connect/README.md": "5e204a530396384acc231580340fac58cc2ad9dfd3b11aaba5449ff6eb78d0c8",
-    "apps/renrencodex-connect/src/main.rs": "5754a3c7ecc1afbe0aaf0f126b76344f93393c0180fb7a0876ef88bd362b5752",
+    "apps/renrencodex-connect/README.md": "e0fc725dc72277b9c580f8e490f23d703a4c9df01f19b748b6beb6ef137babea",
+    "apps/renrencodex-connect/src/main.rs": "4b698674a16cc66c224cad478cd16872ebfe2592598aece1bad239705947e993",
     "crates/client-native/Cargo.toml": "2cce6efa69b8f921650ee32e33c4796b78d27381ca704bdf515324134bc67519",
     "crates/client-native/src/lib.rs": "101b2aff55d4a76f71afab4798701de21e1397c93d01774a42f8f0ec3b464b7a",
     "crates/client-protocol/Cargo.toml": "4ae6243306cd9706124ffc638b36fa0ac65529bfae5d6d62d044a2f344580d66",

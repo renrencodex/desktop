@@ -18,7 +18,7 @@
     },
     "apps/desktop": {
       "name": "@cloud-machine/desktop",
-      "version": "0.2.16",
+      "version": "0.2.18",
       "dependencies": {
         "@base-ui/react": "^1.6.0",
         "@cloud-machine/api-client": "workspace:*",

@@ -8,6 +8,8 @@
   工作区和 WebSocket Gateway 所需的平台协议。
 - [专属客户端改造指南](customization.md)：更换品牌、界面、安装包、更新服务和签名配置，同时保留
   人人Codex平台连接边界。
+- [独立连接器安装与使用指南](../apps/renrencodex-connect/README.md)：Windows、macOS、Linux
+  安装校验，以及 SSH `ProxyCommand`、原生 TCP 转发和常见错误处理。
 
 接口实现的代码级事实来源是：
 
@@ -29,6 +31,9 @@ This directory contains developer documentation for RenrenCodex Desktop:
   Gateway.
 - [Custom client guide](customization.md): branding, UI, installers, updates, and signing while
   retaining the RenrenCodex platform connection boundaries.
+- [Standalone connector installation and usage](../apps/renrencodex-connect/README.md): verified
+  installation on Windows, macOS, and Linux, plus SSH `ProxyCommand`, native TCP forwarding, and
+  troubleshooting.
 
 The code-level sources of truth are:
 
