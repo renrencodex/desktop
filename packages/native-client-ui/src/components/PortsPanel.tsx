@@ -33,19 +33,28 @@ const CONNECTOR_DOWNLOADS = [
   {
     label: "Windows x64",
     href: "/downloads/renrencodex-connect-windows-x64.zip",
+    externalHref: "https://renrencodex.com/downloads/renrencodex-connect-windows-x64.zip",
     filename: "renrencodex-connect-windows-x64.zip",
   },
   {
     label: "macOS Universal",
     href: "/downloads/renrencodex-connect-macos-universal.tar.gz",
+    externalHref: "https://renrencodex.com/downloads/renrencodex-connect-macos-universal.tar.gz",
     filename: "renrencodex-connect-macos-universal.tar.gz",
   },
   {
     label: "Linux x64",
     href: "/downloads/renrencodex-connect-linux-x64.tar.gz",
+    externalHref: "https://renrencodex.com/downloads/renrencodex-connect-linux-x64.tar.gz",
     filename: "renrencodex-connect-linux-x64.tar.gz",
   },
 ] as const;
+
+const CONNECTOR_CHECKSUM = {
+  href: "/downloads/renrencodex-connect-SHA256SUMS",
+  externalHref: "https://renrencodex.com/downloads/renrencodex-connect-SHA256SUMS",
+  filename: "renrencodex-connect-SHA256SUMS",
+} as const;
 
 function shellQuote(value: string): string {
   return `'${value.replaceAll("'", `'"'"'`)}'`;
@@ -127,6 +136,14 @@ export function PortsPanel({ machineId, active = true }: { machineId: string; ac
       await platform.openExternal(normalizePreviewUrlHostname(port.endpoint.url));
     } catch (cause) {
       setError(userErrorMessage(cause, "无法打开系统浏览器，请重试"));
+    }
+  };
+
+  const openConnectorDownload = async (url: string) => {
+    try {
+      await platform.openExternal(url);
+    } catch (cause) {
+      setError(userErrorMessage(cause, "无法打开连接器下载地址，请重试"));
     }
   };
 
@@ -228,16 +245,45 @@ export function PortsPanel({ machineId, active = true }: { machineId: string; ac
                 </a>
               ))}
               <a
-                href="/downloads/renrencodex-connect-SHA256SUMS"
-                download="renrencodex-connect-SHA256SUMS"
+                href={CONNECTOR_CHECKSUM.href}
+                download={CONNECTOR_CHECKSUM.filename}
                 className="text-sky-500 hover:text-sky-400 hover:underline"
               >
                 SHA-256
               </a>
             </span>
-          ) : (
-            <span className="ml-1 text-emerald-600">Desktop 已内置连接器。</span>
-          )}
+          ) : platformKind === "tauri-desktop" ? (
+            <span className="ml-1 inline-flex flex-wrap items-center gap-x-2">
+              <span className="text-emerald-600">Desktop 已内置连接器；独立版下载：</span>
+              {CONNECTOR_DOWNLOADS.map((download) => (
+                <a
+                  key={download.externalHref}
+                  href={download.externalHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sky-500 hover:text-sky-400 hover:underline"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    void openConnectorDownload(download.externalHref);
+                  }}
+                >
+                  {download.label}
+                </a>
+              ))}
+              <a
+                href={CONNECTOR_CHECKSUM.externalHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sky-500 hover:text-sky-400 hover:underline"
+                onClick={(event) => {
+                  event.preventDefault();
+                  void openConnectorDownload(CONNECTOR_CHECKSUM.externalHref);
+                }}
+              >
+                SHA-256
+              </a>
+            </span>
+          ) : null}
         </p>
         <button
           type="button"
