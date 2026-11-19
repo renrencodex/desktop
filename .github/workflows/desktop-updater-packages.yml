@@ -399,9 +399,11 @@ jobs:
           cp "${debs[0]}" "$output/renrencodex-desktop-$RELEASE_VERSION-x86_64.deb"
           cp "${rpms[0]}" "$output/renrencodex-desktop-$RELEASE_VERSION-x86_64.rpm"
 
+          standalone_connector_target_dir="target/standalone-connector-build"
           cargo build --locked --release --package renrencodex-connect \
-            --target x86_64-unknown-linux-musl
-          connector="target/x86_64-unknown-linux-musl/release/renrencodex-connect"
+            --target x86_64-unknown-linux-musl \
+            --target-dir "$standalone_connector_target_dir"
+          connector="$standalone_connector_target_dir/x86_64-unknown-linux-musl/release/renrencodex-connect"
           [[ "$("$connector" --version)" == "renrencodex-connect $RELEASE_VERSION" ]]
           file "$connector" | grep -Eq 'static|static-pie'
           if readelf -d "$connector" 2>/dev/null | grep -q NEEDED; then
