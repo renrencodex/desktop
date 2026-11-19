@@ -1,5 +1,5 @@
 /** Ports 面板纯函数（设计文档 Preview 章节）。 */
-import type { MachinePort } from "@cloud-machine/api-client";
+import type { MachinePort, PortAccessMode, UpdatePortAccessInput } from "@cloud-machine/api-client";
 
 export type HttpPreviewPort = MachinePort & {
   exposureMode: "http";
@@ -9,6 +9,26 @@ export type HttpPreviewPort = MachinePort & {
 
 export function isHttpPreviewPort(port: MachinePort): port is HttpPreviewPort {
   return port.exposureMode === "http" && port.endpoint.kind === "http";
+}
+
+/** 新客户端优先使用派生访问模式；兼容尚未返回 accessMode 的旧 API。 */
+export function resolvedPortAccessMode(port: MachinePort): PortAccessMode {
+  if (port.accessMode) return port.accessMode;
+  if (port.exposureMode === "http" && port.httpUpstream?.scheme === "https") return "https";
+  return port.exposureMode;
+}
+
+export function updateInputForAccessMode(mode: PortAccessMode): UpdatePortAccessInput {
+  switch (mode) {
+    case "http":
+      return { mode: "http" };
+    case "https":
+      return { mode: "https" };
+    case "ssh":
+      return { mode: "ssh" };
+    case "tcp":
+      return { mode: "tcp" };
+  }
 }
 
 /**

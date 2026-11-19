@@ -360,7 +360,23 @@ export interface UpdateWorkspaceInput {
 // ---------------------------------------------------------------------------
 
 export type PortVisibility = "private" | "public";
+/** 数据库兼容字段；HTTPS 回源仍属于 HTTP exposure。 */
 export type PortExposureMode = "http" | "ssh" | "tcp";
+export type PortAccessMode = "http" | "https" | "ssh" | "tcp";
+
+export interface PortHttpUpstream {
+  scheme: "http" | "https";
+  tlsServerName: string | null;
+  hostHeader: string | null;
+}
+
+export type UpdatePortAccessInput =
+  | { mode: "http" | "ssh" | "tcp" }
+  | {
+      mode: "https";
+      tlsServerName?: string | null;
+      hostHeader?: string | null;
+    };
 
 export type MachinePortEndpoint =
   | { kind: "http"; url: string }
@@ -381,8 +397,11 @@ export interface MachinePort {
   process: string | null;
   visibility: PortVisibility;
   exposureMode: PortExposureMode;
+  /** 新 API 返回；缺失时客户端按 exposureMode 兼容旧 API。 */
+  accessMode?: PortAccessMode;
+  httpUpstream?: PortHttpUpstream | null;
   endpoint: MachinePortEndpoint;
-  /** 旧客户端兼容字段；只有 exposureMode=http 时才可作为 HTTP Preview 打开。 */
+  /** 旧客户端兼容字段；HTTP/HTTPS 回源均可作为 HTTP Preview 打开。 */
   previewUrl: string;
 }
 
@@ -394,6 +413,8 @@ export interface MachinePortRow {
   protocol: "tcp" | "udp";
   visibility: PortVisibility;
   exposureMode: PortExposureMode;
+  accessMode?: PortAccessMode;
+  httpUpstream?: PortHttpUpstream | null;
   endpoint: MachinePortEndpoint;
   previewUrl: string;
   createdAt: string;

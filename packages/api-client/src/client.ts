@@ -75,6 +75,7 @@ import type {
   PasswordResetRequestResponse,
   UpdateMachineInput,
   UpdateMachineEgressLineInput,
+  UpdatePortAccessInput,
   UpdateWorkspaceInput,
   User,
   Wallet,
@@ -867,6 +868,11 @@ export function createApiClient(options: ApiClientOptions) {
         request<MachinePortRow>(
           `/api/v1/machines/${encodeURIComponent(machineId)}/ports/${port}/exposure`,
           { method: "PUT", body: { mode } },
+        ),
+      setAccessMode: (machineId: string, port: number, input: UpdatePortAccessInput) =>
+        request<MachinePortRow>(
+          `/api/v1/machines/${encodeURIComponent(machineId)}/ports/${port}/exposure`,
+          { method: "PUT", body: input },
         ),
     },
     snapshots: {

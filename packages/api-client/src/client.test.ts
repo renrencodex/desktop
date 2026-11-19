@@ -455,14 +455,25 @@ describe("请求构造", () => {
     await client.ports.list("machine/one");
     await client.ports.setVisibility("machine/one", 3080, "public");
     await client.ports.setExposure("machine/one", 3080, "tcp");
+    await client.ports.setAccessMode("machine/one", 3443, {
+      mode: "https",
+      tlsServerName: "internal.example.com",
+      hostHeader: "app.internal.example.com:3443",
+    });
 
     expect(calls.map((call) => [call.method, call.url])).toEqual([
       ["GET", "http://api.test/api/v1/machines/machine%2Fone/ports"],
       ["PUT", "http://api.test/api/v1/machines/machine%2Fone/ports/3080/visibility"],
       ["PUT", "http://api.test/api/v1/machines/machine%2Fone/ports/3080/exposure"],
+      ["PUT", "http://api.test/api/v1/machines/machine%2Fone/ports/3443/exposure"],
     ]);
     expect(calls[1]!.body).toEqual({ visibility: "public" });
     expect(calls[2]!.body).toEqual({ mode: "tcp" });
+    expect(calls[3]!.body).toEqual({
+      mode: "https",
+      tlsServerName: "internal.example.com",
+      hostHeader: "app.internal.example.com:3443",
+    });
   });
 
   test("Workspace v2 与 workbench layout 方法构造正确路径和请求体", async () => {
