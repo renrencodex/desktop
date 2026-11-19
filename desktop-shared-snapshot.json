@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "policy": "desktop-public-v1",
   "source": {
-    "commit": "e76fceefde36fbc95c6bbe80a4f2ca8405343afb",
+    "commit": "569108de4858d03e07ecd54764175e071cf59daf",
     "channel": "production"
   },
   "paths": [
@@ -20,7 +20,7 @@
   "files": {
     "apps/desktop/.env.example": "87ed11742942f030b63fa54811a3d6694da0d1a7c4cdfaf66348fa18ebefe82d",
     "apps/desktop/index.html": "eac75b77323a1569edff497db76ab5bd14bdfc176f33564dce194a25f4cf5e07",
-    "apps/desktop/package.json": "0f4dbab6b72a2a1894080ce8d44434103f8c04b79103145adbb52ab4f7f8cbb9",
+    "apps/desktop/package.json": "cb70d4ea4c522089030c2925eb81ebf4fca4dc95edb6ee6b4ce6468785bb2869",
     "apps/desktop/scripts/build-windows-release.test.ts": "9d4f4a4b0257d38ccd1263719c01845bc6c2122c707b08e71f3195263c09e789",
     "apps/desktop/scripts/build-windows-release.ts": "c1c614457becd3c025f4e233ae7a047cb06a9e083ccde3b61369b89a6f6a304b",
     "apps/desktop/scripts/file-preview-retry.ts": "88b1484d3e2bc412bc3e2b5a083c89e4e15ab8fcb29f71d421ad13f1ccb03c25",
@@ -164,7 +164,7 @@
     "packages/native-client-ui/src/components/OsLogo.tsx": "584ceb7e02848f0eacb881eda0cef02c1c419858c58e0551767ef864923e3cc0",
     "packages/native-client-ui/src/components/PaymentDialog.tsx": "35b8b1b2a657603a438c1f55a5690cbe1ffd22c1c2ecce7957b9e8d928dcc377",
     "packages/native-client-ui/src/components/PdfFilePreview.tsx": "33b18510caf4bf74d27c5f2ef4a9ff43e14670272a8592813b58783d08ccfa80",
-    "packages/native-client-ui/src/components/PortsPanel.tsx": "1eb84b1c32c5c0555f0468c88ec635da26224e3e876885ecb8013400edeb7cfa",
+    "packages/native-client-ui/src/components/PortsPanel.tsx": "6c29161f6cb2232cd7c790d7416db035d9de53e738928aac71a66585ddd96160",
     "packages/native-client-ui/src/components/RenameDialog.tsx": "3cd99672026e179b48c0d1bdaca7a903dfb415277b95e81c77763e8c51433e9e",
     "packages/native-client-ui/src/components/RescueTerminalDialog.tsx": "a480cbe8e8b38bfabb31e9c7d3c9a546297b73bf98383c186e1d0f85669ad263",
     "packages/native-client-ui/src/components/ResponsiveWorkbenchShell.tsx": "0886f875e843e97156f38380e9f4e9aa1f23c504e59255fec833e6eac773abf2",

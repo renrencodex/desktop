@@ -29,32 +29,7 @@ const EXPOSURE_LABEL: Record<PortExposureMode, string> = {
   tcp: "TCP",
 };
 
-const CONNECTOR_DOWNLOADS = [
-  {
-    label: "Windows x64",
-    href: "/downloads/renrencodex-connect-windows-x64.zip",
-    externalHref: "https://renrencodex.com/downloads/renrencodex-connect-windows-x64.zip",
-    filename: "renrencodex-connect-windows-x64.zip",
-  },
-  {
-    label: "macOS Universal",
-    href: "/downloads/renrencodex-connect-macos-universal.tar.gz",
-    externalHref: "https://renrencodex.com/downloads/renrencodex-connect-macos-universal.tar.gz",
-    filename: "renrencodex-connect-macos-universal.tar.gz",
-  },
-  {
-    label: "Linux x64",
-    href: "/downloads/renrencodex-connect-linux-x64.tar.gz",
-    externalHref: "https://renrencodex.com/downloads/renrencodex-connect-linux-x64.tar.gz",
-    filename: "renrencodex-connect-linux-x64.tar.gz",
-  },
-] as const;
-
-const CONNECTOR_CHECKSUM = {
-  href: "/downloads/renrencodex-connect-SHA256SUMS",
-  externalHref: "https://renrencodex.com/downloads/renrencodex-connect-SHA256SUMS",
-  filename: "renrencodex-connect-SHA256SUMS",
-} as const;
+const CONNECTOR_DOCUMENTATION_URL = "https://docs.renrencodex.com/clients/connector";
 
 function shellQuote(value: string): string {
   return `'${value.replaceAll("'", `'"'"'`)}'`;
@@ -139,11 +114,11 @@ export function PortsPanel({ machineId, active = true }: { machineId: string; ac
     }
   };
 
-  const openConnectorDownload = async (url: string) => {
+  const openConnectorDocumentation = async () => {
     try {
-      await platform.openExternal(url);
+      await platform.openExternal(CONNECTOR_DOCUMENTATION_URL);
     } catch (cause) {
-      setError(userErrorMessage(cause, "无法打开连接器下载地址，请重试"));
+      setError(userErrorMessage(cause, "无法打开连接器文档，请重试"));
     }
   };
 
@@ -233,54 +208,31 @@ export function PortsPanel({ machineId, active = true }: { machineId: string; ac
           </span>
           {platformKind === "web" ? (
             <span className="ml-1 inline-flex flex-wrap items-center gap-x-2">
-              <span>下载连接器：</span>
-              {CONNECTOR_DOWNLOADS.map((download) => (
-                <a
-                  key={download.href}
-                  href={download.href}
-                  download={download.filename}
-                  className="text-sky-500 hover:text-sky-400 hover:underline"
-                >
-                  {download.label}
-                </a>
-              ))}
               <a
-                href={CONNECTOR_CHECKSUM.href}
-                download={CONNECTOR_CHECKSUM.filename}
+                data-connector-documentation
+                href={CONNECTOR_DOCUMENTATION_URL}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-sky-500 hover:text-sky-400 hover:underline"
               >
-                SHA-256
+                连接器下载与使用说明
               </a>
             </span>
           ) : platformKind === "tauri-desktop" ? (
             <span className="ml-1 inline-flex flex-wrap items-center gap-x-2">
-              <span className="text-emerald-600">Desktop 已内置连接器；独立版下载：</span>
-              {CONNECTOR_DOWNLOADS.map((download) => (
-                <a
-                  key={download.externalHref}
-                  href={download.externalHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sky-500 hover:text-sky-400 hover:underline"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    void openConnectorDownload(download.externalHref);
-                  }}
-                >
-                  {download.label}
-                </a>
-              ))}
+              <span className="text-emerald-600">Desktop 已内置连接器；</span>
               <a
-                href={CONNECTOR_CHECKSUM.externalHref}
+                data-connector-documentation
+                href={CONNECTOR_DOCUMENTATION_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sky-500 hover:text-sky-400 hover:underline"
                 onClick={(event) => {
                   event.preventDefault();
-                  void openConnectorDownload(CONNECTOR_CHECKSUM.externalHref);
+                  void openConnectorDocumentation();
                 }}
               >
-                SHA-256
+                查看独立版下载与使用说明
               </a>
             </span>
           ) : null}
