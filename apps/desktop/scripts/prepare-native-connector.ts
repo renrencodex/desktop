@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 const desktopRoot = resolve(import.meta.dir, "..");
 const repositoryRoot = resolve(desktopRoot, "../..");
 const binariesDir = join(desktopRoot, "src-tauri", "binaries");
+const connectorTargetDir = join(repositoryRoot, "target", "connector-sidecar-build");
 
 async function run(command: string[]): Promise<void> {
   const child = Bun.spawn(command, { cwd: repositoryRoot, stdout: "inherit", stderr: "inherit" });
@@ -19,8 +20,8 @@ function hostTriple(): string {
   return match[1].trim();
 }
 
-async function build(target: string): Promise<string> {
-  await run([
+export function connectorBuildCommand(target: string, targetDir: string): string[] {
+  return [
     "cargo",
     "build",
     "--locked",
@@ -29,28 +30,45 @@ async function build(target: string): Promise<string> {
     "renrencodex-connect",
     "--target",
     target,
-  ]);
-  const extension = target.includes("windows") ? ".exe" : "";
-  return join(repositoryRoot, "target", target, "release", `renrencodex-connect${extension}`);
+    "--target-dir",
+    targetDir,
+  ];
 }
 
-await mkdir(binariesDir, { recursive: true });
-const target = process.env.CONNECTOR_TARGET ?? process.env.TAURI_ENV_TARGET_TRIPLE ?? hostTriple();
-
-if (target === "universal-apple-darwin") {
-  const arm = await build("aarch64-apple-darwin");
-  const intel = await build("x86_64-apple-darwin");
-  const armSidecar = join(binariesDir, "renrencodex-connect-aarch64-apple-darwin");
-  const intelSidecar = join(binariesDir, "renrencodex-connect-x86_64-apple-darwin");
-  const sidecarOutput = join(binariesDir, "renrencodex-connect-universal-apple-darwin");
-  await copyFile(arm, armSidecar);
-  await copyFile(intel, intelSidecar);
-  await chmod(armSidecar, 0o755);
-  await chmod(intelSidecar, 0o755);
-  await run(["lipo", "-create", "-output", sidecarOutput, arm, intel]);
-  await chmod(sidecarOutput, 0o755);
-} else {
-  const source = await build(target);
+export function connectorBuildOutput(target: string, targetDir: string): string {
   const extension = target.includes("windows") ? ".exe" : "";
-  await copyFile(source, join(binariesDir, `renrencodex-connect-${target}${extension}`));
+  return join(targetDir, target, "release", `renrencodex-connect${extension}`);
+}
+
+async function build(target: string): Promise<string> {
+  await run(connectorBuildCommand(target, connectorTargetDir));
+  return connectorBuildOutput(target, connectorTargetDir);
+}
+
+async function main(): Promise<void> {
+  await mkdir(binariesDir, { recursive: true });
+  const target =
+    process.env.CONNECTOR_TARGET ?? process.env.TAURI_ENV_TARGET_TRIPLE ?? hostTriple();
+
+  if (target === "universal-apple-darwin") {
+    const arm = await build("aarch64-apple-darwin");
+    const intel = await build("x86_64-apple-darwin");
+    const armSidecar = join(binariesDir, "renrencodex-connect-aarch64-apple-darwin");
+    const intelSidecar = join(binariesDir, "renrencodex-connect-x86_64-apple-darwin");
+    const sidecarOutput = join(binariesDir, "renrencodex-connect-universal-apple-darwin");
+    await copyFile(arm, armSidecar);
+    await copyFile(intel, intelSidecar);
+    await chmod(armSidecar, 0o755);
+    await chmod(intelSidecar, 0o755);
+    await run(["lipo", "-create", "-output", sidecarOutput, arm, intel]);
+    await chmod(sidecarOutput, 0o755);
+  } else {
+    const source = await build(target);
+    const extension = target.includes("windows") ? ".exe" : "";
+    await copyFile(source, join(binariesDir, `renrencodex-connect-${target}${extension}`));
+  }
+}
+
+if (import.meta.main) {
+  await main();
 }
