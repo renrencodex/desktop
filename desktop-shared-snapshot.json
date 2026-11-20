@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "policy": "desktop-public-v1",
   "source": {
-    "commit": "9df5efdb3b30767e7b0fa96e741170b22badb724",
+    "commit": "2f018f6a3ac074e964af6e09d33f5c8e48203e5b",
     "channel": "production"
   },
   "paths": [
@@ -20,7 +20,7 @@
   "files": {
     "apps/desktop/.env.example": "87ed11742942f030b63fa54811a3d6694da0d1a7c4cdfaf66348fa18ebefe82d",
     "apps/desktop/index.html": "eac75b77323a1569edff497db76ab5bd14bdfc176f33564dce194a25f4cf5e07",
-    "apps/desktop/package.json": "766d8d173aff2bdb3ecd398ddee8b0a8cb49b0356b48898a49315dd6af6425f3",
+    "apps/desktop/package.json": "6a4cc334f79ea2808bfb58a4b4b027200f3519d1fa4ed871e73db71ba5b5c856",
     "apps/desktop/scripts/build-windows-release.test.ts": "9d4f4a4b0257d38ccd1263719c01845bc6c2122c707b08e71f3195263c09e789",
     "apps/desktop/scripts/build-windows-release.ts": "c1c614457becd3c025f4e233ae7a047cb06a9e083ccde3b61369b89a6f6a304b",
     "apps/desktop/scripts/file-preview-retry.ts": "88b1484d3e2bc412bc3e2b5a083c89e4e15ab8fcb29f71d421ad13f1ccb03c25",
@@ -259,7 +259,7 @@
     "packages/native-client-ui/src/lib/terminal-native-input.ts": "3bb822981073143358baff80a34c0125d67c039432b82f52d51e99ed304b32d4",
     "packages/native-client-ui/src/lib/terminal-pane-sizing.ts": "af67676757bb88095098c166b0f084d66c6c87ea7d8680faedafaf898216e912",
     "packages/native-client-ui/src/lib/terminal-paste.ts": "df4db2aaaa2aacfa1253f86805e9e28a7bc6fd0451ebf1bb4e83d78a2f9e1342",
-    "packages/native-client-ui/src/lib/terminal-renderer.ts": "c2c19a3fadb132988cbf7c741edb9c20a509beb8c537e96f2bf38b5a384ad637",
+    "packages/native-client-ui/src/lib/terminal-renderer.ts": "9b41ec25dc12d93067b25a65f78765554064ddc8614942305a9f70fd66ac7752",
     "packages/native-client-ui/src/lib/terminal-scroll.ts": "337ca6272f19c9d52c519d81125fa1dcf9580ea0f5762bfa931edfccb2a77828",
     "packages/native-client-ui/src/lib/terminal-scrollbar-model.test.ts": "327e11c4e8cc8910f75f4e6c7bbd4e90b5cd682d842f6cd97b8251e71915219c",
     "packages/native-client-ui/src/lib/terminal-scrollbar-model.ts": "4e32f923b4c7ae49b1a32087fe9b481b23fb901a1282a76662c6effec8afc427",
@@ -342,8 +342,8 @@
     "packages/workspace-ui/src/monaco.ts": "7d751ffa03634f5d63ded163380a55a373666c3dc780b8e4877b4e8bd19fedc2",
     "packages/workspace-ui/src/referral-bank-account.tsx": "79d3ea4efec4d12938e8abe947db56497dd965f5d3277a3217111405c2499360",
     "packages/workspace-ui/src/styles.css": "932f6a7e367b3ad32df11f2afd58e526d2c0abd309e50cab01b4ba7869162ad8",
-    "packages/workspace-ui/src/terminal-canvas-selection.test.ts": "e2f58c70a86251785c8ffbe3f1ceed924d71c9213469813f931ec91afcd73e92",
-    "packages/workspace-ui/src/terminal-canvas-selection.ts": "14e651bef01d1a839bea859b4f2dc30ffa5616112b235516fb2e0e5ab165bdfc",
+    "packages/workspace-ui/src/terminal-canvas-selection.test.ts": "6d319fe9ee5bf72c687801de33179eda86512a600ae493434f58937af150db53",
+    "packages/workspace-ui/src/terminal-canvas-selection.ts": "ec9d27309af25f514436cafc50d16c8fade75460f545cdfeeb692189522376a6",
     "packages/workspace-ui/src/terminal-font.test.ts": "c6e0562685a18184c9af774412ecb3e70de542ae3616f13f74075a91b6b1ad27",
     "packages/workspace-ui/src/terminal-font.ts": "66f923f29447d0df5b2452e77d1a5c2af26a91ff0d80657b701eba635e049152",
     "packages/workspace-ui/src/terminal-keyboard.test.ts": "aacab8e2e57d65a9721b4361d091fc1f70d90f4c741dbd47178f7a53dcb50bf9",
@@ -364,7 +364,7 @@
     "packages/workspace-ui/src/workspace-shell.test.ts": "5335bee2acb27f64880e3eedfd491eddf4587c07bf2de2e09ed0d27840d1c2d0",
     "packages/workspace-ui/src/workspace-shell.ts": "4534c73009d3ddd1539eadcc6a5c14b02578ed91a2dc6151be79249ded7b781d",
     "packages/workspace-ui/src/workspace-workbench.test.ts": "d6646371d0ee6e0bcf3de65e699675b23a17b62c24006325dcf3f3405d36a399",
-    "packages/workspace-ui/src/workspace-workbench.tsx": "adbf9371769e0b694b2304d302fc8d5959efb49ffdb63072e128eb73d3bf4ded",
+    "packages/workspace-ui/src/workspace-workbench.tsx": "59416f5651b2d3541a648328ff2e0499d1f80d3f06d7c61b013ccf96452794dc",
     "packages/workspace-ui/tsconfig.build.json": "9c3dede162c74f341fb66c29c8701b59fa66920f40faf7174ad024fea8b96211",
     "packages/workspace-ui/tsconfig.json": "c69ac17869ee8ff81098a58fde4ea159436086708d329da2bddfcca0744f30ad"
   }

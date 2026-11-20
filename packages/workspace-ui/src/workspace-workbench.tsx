@@ -24,7 +24,10 @@ import {
 import "@xterm/xterm/css/xterm.css";
 
 import { configureWorkspaceMonacoWorkers } from "./monaco";
-import { installGhosttyBackgroundPixelAlignment } from "./terminal-canvas-selection";
+import {
+  installGhosttyBackgroundPixelAlignment,
+  installGhosttySelectionAutoScrollBoundary,
+} from "./terminal-canvas-selection";
 import {
   buildWorkspaceDiffTree,
   type WorkspaceDiffRepositoryTree,
@@ -892,6 +895,7 @@ async function createBasicTerminalRenderer(
     const fit = new module.FitAddon();
     terminal.loadAddon(fit);
     terminal.open(element);
+    const stopSelectionAutoScrollBoundary = installGhosttySelectionAutoScrollBoundary(terminal);
     const stopBackgroundPixelAlignment = installGhosttyBackgroundPixelAlignment(terminal.renderer);
     return {
       backend: "ghostty",
@@ -909,6 +913,7 @@ async function createBasicTerminalRenderer(
         onData: (listener) => terminal.onData(listener),
         onResize: (listener) => terminal.onResize(listener),
         dispose: () => {
+          stopSelectionAutoScrollBoundary();
           stopBackgroundPixelAlignment();
           terminal.dispose();
         },

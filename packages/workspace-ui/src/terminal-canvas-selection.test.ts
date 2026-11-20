@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import type { CanvasRenderer } from "ghostty-web";
 
-import { installGhosttyBackgroundPixelAlignment } from "./terminal-canvas-selection";
+import {
+  installGhosttyBackgroundPixelAlignment,
+  installGhosttySelectionAutoScrollBoundary,
+} from "./terminal-canvas-selection";
 
 interface FillCall {
   x: number;
@@ -233,5 +236,77 @@ describe("installGhosttyBackgroundPixelAlignment", () => {
       renderLine() {},
     } as unknown as CanvasRenderer;
     expect(() => installGhosttyBackgroundPixelAlignment(renderer)()).not.toThrow();
+  });
+});
+
+describe("installGhosttySelectionAutoScrollBoundary", () => {
+  test("stops auto-scroll while the pointer remains inside the canvas", () => {
+    const originalCalls: Array<[number, number]> = [];
+    let stopped = 0;
+    const manager = {
+      stopAutoScroll() {
+        stopped += 1;
+      },
+      updateAutoScroll(offsetY: number, viewportHeight: number) {
+        originalCalls.push([offsetY, viewportHeight]);
+      },
+    };
+    const dispose = installGhosttySelectionAutoScrollBoundary({ selectionManager: manager });
+
+    manager.updateAutoScroll(456, 480);
+    manager.updateAutoScroll(0, 480);
+    manager.updateAutoScroll(480, 480);
+
+    expect(stopped).toBe(3);
+    expect(originalCalls).toEqual([]);
+    dispose();
+  });
+
+  test("preserves Ghostty auto-scroll after the pointer leaves the canvas", () => {
+    const originalCalls: Array<[number, number]> = [];
+    const manager = {
+      stopAutoScroll() {},
+      updateAutoScroll(offsetY: number, viewportHeight: number) {
+        originalCalls.push([offsetY, viewportHeight]);
+      },
+    };
+    installGhosttySelectionAutoScrollBoundary({ selectionManager: manager });
+
+    manager.updateAutoScroll(-1, 480);
+    manager.updateAutoScroll(481, 480);
+    manager.updateAutoScroll(Number.NaN, 480);
+
+    expect(originalCalls).toEqual([
+      [-1, 480],
+      [481, 480],
+      [Number.NaN, 480],
+    ]);
+  });
+
+  test("disposal restores only the installed instance wrapper", () => {
+    const original = () => {};
+    const manager = { stopAutoScroll() {}, updateAutoScroll: original };
+    const dispose = installGhosttySelectionAutoScrollBoundary({ selectionManager: manager });
+    expect(manager.updateAutoScroll).not.toBe(original);
+
+    dispose();
+    expect(manager.updateAutoScroll).toBe(original);
+
+    const disposeAgain = installGhosttySelectionAutoScrollBoundary({ selectionManager: manager });
+    const replacement = () => {};
+    manager.updateAutoScroll = replacement;
+    disposeAgain();
+    expect(manager.updateAutoScroll).toBe(replacement);
+  });
+
+  test("missing or locked selection internals are a safe no-op", () => {
+    expect(() => installGhosttySelectionAutoScrollBoundary(undefined)()).not.toThrow();
+    expect(() => installGhosttySelectionAutoScrollBoundary({})()).not.toThrow();
+
+    const manager = { stopAutoScroll() {}, updateAutoScroll() {} };
+    Object.defineProperty(manager, "updateAutoScroll", { writable: false });
+    expect(() =>
+      installGhosttySelectionAutoScrollBoundary({ selectionManager: manager })(),
+    ).not.toThrow();
   });
 });

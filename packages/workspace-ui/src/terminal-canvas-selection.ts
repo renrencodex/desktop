@@ -6,6 +6,15 @@ interface GhosttyRendererInternals {
   renderLine(line: unknown[], row: number, columns: number): void;
 }
 
+interface GhosttySelectionManagerInternals {
+  stopAutoScroll(): void;
+  updateAutoScroll(offsetY: number, viewportHeight: number): void;
+}
+
+interface GhosttyTerminalSelectionInternals {
+  selectionManager?: Partial<GhosttySelectionManagerInternals>;
+}
+
 interface LinePaintState {
   metrics: { width: number; height: number };
   row: number;
@@ -15,6 +24,64 @@ interface LinePaintState {
 const noop = () => {};
 const AXIS_EPSILON = 1e-7;
 const GRID_EPSILON = 1e-7;
+
+/**
+ * ghostty-web 0.4.0 starts selection auto-scroll inside a 30px canvas edge band.
+ * With a 16px terminal row that band includes the penultimate row, so an ordinary
+ * horizontal drag can move the selection endpoint to the final row after 50ms.
+ *
+ * Keep in-canvas movement local to the painted row. Ghostty's mouseleave and
+ * document-mousemove handlers still start auto-scroll after the pointer actually
+ * crosses the top or bottom edge. The instance wrapper avoids changing every
+ * terminal globally and is conditionally restored when the terminal is disposed.
+ */
+export function installGhosttySelectionAutoScrollBoundary(terminal: unknown): () => void {
+  if (!terminal || typeof terminal !== "object") return noop;
+  const manager = (terminal as GhosttyTerminalSelectionInternals).selectionManager;
+  const originalUpdate = manager?.updateAutoScroll;
+  const stopAutoScroll = manager?.stopAutoScroll;
+  if (!manager || !originalUpdate || !stopAutoScroll) return noop;
+
+  const hadOwnUpdate = Object.prototype.hasOwnProperty.call(manager, "updateAutoScroll");
+  const updateOutsideCanvasOnly = function (
+    this: GhosttySelectionManagerInternals,
+    offsetY: number,
+    viewportHeight: number,
+  ) {
+    if (
+      Number.isFinite(offsetY) &&
+      Number.isFinite(viewportHeight) &&
+      viewportHeight >= 0 &&
+      offsetY >= 0 &&
+      offsetY <= viewportHeight
+    ) {
+      stopAutoScroll.call(this);
+      return;
+    }
+    originalUpdate.call(this, offsetY, viewportHeight);
+  };
+
+  const restore = () => {
+    try {
+      if (manager.updateAutoScroll !== updateOutsideCanvasOnly) return;
+      if (hadOwnUpdate) manager.updateAutoScroll = originalUpdate;
+      else delete manager.updateAutoScroll;
+    } catch {
+      // A replaced or locked manager method belongs to its current owner.
+    }
+  };
+
+  try {
+    manager.updateAutoScroll = updateOutsideCanvasOnly;
+  } catch {
+    return noop;
+  }
+  if (manager.updateAutoScroll !== updateOutsideCanvasOnly) {
+    restore();
+    return noop;
+  }
+  return restore;
+}
 
 function isNearInteger(value: number): boolean {
   return Math.abs(value - Math.round(value)) <= GRID_EPSILON;

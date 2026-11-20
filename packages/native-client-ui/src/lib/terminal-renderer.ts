@@ -1,5 +1,8 @@
 import type { ITheme as XtermTheme, Terminal as XtermTerminal } from "@xterm/xterm";
-import { installGhosttyBackgroundPixelAlignment } from "@cloud-machine/workspace-ui/terminal-canvas-selection";
+import {
+  installGhosttyBackgroundPixelAlignment,
+  installGhosttySelectionAutoScrollBoundary,
+} from "@cloud-machine/workspace-ui/terminal-canvas-selection";
 import { createTerminalOsc52Filter } from "@cloud-machine/workspace-ui/terminal-osc52";
 
 import "@xterm/xterm/css/xterm.css";
@@ -295,9 +298,11 @@ async function createBackendRenderer(
     term.focus = focus.focus;
     let softKeyboard: ReturnType<typeof bindTerminalSoftKeyboard> | null = null;
     let stopBackgroundPixelAlignment: (() => void) | undefined;
+    let stopSelectionAutoScrollBoundary: (() => void) | undefined;
     let stopScrollbarSuppression: (() => void) | undefined;
     try {
       term.open(container);
+      stopSelectionAutoScrollBoundary = installGhosttySelectionAutoScrollBoundary(term);
       stopBackgroundPixelAlignment = installGhosttyBackgroundPixelAlignment(term.renderer);
       stopScrollbarSuppression = suppressGhosttyScrollbar(
         term,
@@ -309,6 +314,7 @@ async function createBackendRenderer(
       // open() 之后宿主才是 contenteditable、textarea 才存在。
       softKeyboard = bindTerminalSoftKeyboard(container, () => term.textarea);
     } catch (error) {
+      stopSelectionAutoScrollBoundary?.();
       stopBackgroundPixelAlignment?.();
       stopScrollbarSuppression?.();
       softKeyboard?.dispose();
@@ -684,6 +690,7 @@ async function createBackendRenderer(
         softKeyboardGate.dispose();
         nativeInputFocus.dispose();
         focus.dispose();
+        stopSelectionAutoScrollBoundary?.();
         stopBackgroundPixelAlignment?.();
         stopScrollbarSuppression?.();
         term.dispose();
