@@ -15,7 +15,7 @@ use std::{
 
 use client_native::{
     ClipboardWriteRequest, DESKTOP_REFRESH_TOKEN_KEY, DeepLinkPayload, DesktopUpdateInfo,
-    DesktopUpdateProgress, NativeError, NativeErrorCode, PreviewColorScheme, PreviewWebviewBounds,
+    DesktopUpdateProgress, NativeError, NativeErrorCode, PreviewWebviewBounds,
     PreviewWebviewBoundsRequest, PreviewWebviewCaptureRequest, PreviewWebviewCloseRequest,
     PreviewWebviewOpenRequest, PreviewWebviewSnapshot, PreviewWebviewVisibilityRequest,
     SecureStorageKey, validate_clipboard_text, validate_desktop_oauth_callback,
@@ -31,7 +31,6 @@ use tauri_plugin_updater::{Update, UpdaterExt};
 mod desktop_tray;
 mod preview_lifecycle;
 mod preview_snapshot;
-mod preview_theme;
 #[cfg(any(target_os = "windows", test))]
 mod window_startup;
 
@@ -60,8 +59,6 @@ struct DeepLinkStateInner {
 #[derive(Default)]
 struct PreviewWebviewState {
     registry: preview_lifecycle::Registry,
-    // Serializes theme changes with creation/reuse, including hidden tabs.
-    theme: tauri::async_runtime::Mutex<PreviewColorScheme>,
 }
 
 #[derive(Default)]
@@ -586,33 +583,6 @@ fn clipboard_write(
         })
 }
 
-#[tauri::command]
-async fn preview_webviews_set_theme(
-    caller: tauri::Webview,
-    app: tauri::AppHandle,
-    state: tauri::State<'_, PreviewWebviewState>,
-    theme: PreviewColorScheme,
-) -> Result<(), NativeError> {
-    ensure_main_webview(caller.label())?;
-    let lifetime = state.registry.lifetime()?;
-    let mut current = state.theme.lock().await;
-    lifetime.check()?;
-    *current = theme;
-    let labels = state.registry.labels()?;
-    let mut failure = None;
-    for label in labels {
-        lifetime.check()?;
-        if let Some(preview) = app.get_webview(&label)
-            && let Err(error) = preview_theme::apply(&preview, theme, &lifetime).await
-        {
-            // A closed/stalled tab must not prevent the remaining tabs receiving the theme.
-            failure = Some(error);
-        }
-    }
-    lifetime.check()?;
-    failure.map_or(Ok(()), Err)
-}
-
 async fn finish_preview_navigation(
     preview: &tauri::Webview,
     lifetime: preview_lifecycle::Lifetime,
@@ -658,7 +628,6 @@ async fn preview_webview_open(
     let url = validate_preview_url(&request.url)?;
     let bounds = validate_preview_bounds(request.bounds)?;
     let lifetime = state.registry.lifetime()?;
-    let theme = state.theme.lock().await;
     lifetime.check()?;
 
     if let Some(existing) = app.get_webview(&label) {
@@ -666,11 +635,6 @@ async fn preview_webview_open(
             .url()
             .is_ok_and(|current| same_origin(&current, &url));
         if reuse {
-            preview_lifecycle::prepare_navigation(
-                &lifetime,
-                preview_theme::apply(&existing, *theme, &lifetime),
-            )
-            .await?;
             return finish_preview_navigation(&existing, lifetime, url, bounds).await;
         }
         existing.close().map_err(|_| preview_unavailable())?;
@@ -697,11 +661,6 @@ async fn preview_webview_open(
             .registry
             .register(preview.label().to_owned(), &lifetime)?;
         preview.hide().map_err(|_| preview_unavailable())?;
-        preview_lifecycle::prepare_navigation(
-            &lifetime,
-            preview_theme::apply(&preview, *theme, &lifetime),
-        )
-        .await?;
         finish_preview_navigation(&preview, lifetime, url, bounds).await
     }
     .await;
@@ -988,7 +947,6 @@ pub fn run() {
             secure_storage_remove,
             take_pending_deep_link,
             preview_webview_open,
-            preview_webviews_set_theme,
             preview_webview_set_bounds,
             preview_webview_set_visible,
             preview_webview_capture,

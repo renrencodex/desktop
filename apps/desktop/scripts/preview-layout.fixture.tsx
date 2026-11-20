@@ -144,7 +144,18 @@ const host = {
   api: {
     ports: {
       list: async () => [
-        { port: 80, address: "0.0.0.0", protocol: "tcp", visibility: "public", previewUrl: url },
+        {
+          port: 80,
+          address: "0.0.0.0",
+          protocol: "tcp",
+          process: null,
+          visibility: "public",
+          exposureMode: "http",
+          accessMode: "http",
+          httpUpstream: { scheme: "http", tlsServerName: null, hostHeader: null },
+          endpoint: { kind: "http", url },
+          previewUrl: url,
+        },
       ],
     },
   },

@@ -1,6 +1,6 @@
 {
   "name": "@cloud-machine/desktop",
-  "version": "0.2.21",
+  "version": "0.2.22",
   "private": true,
   "type": "module",
   "scripts": {
@@ -29,7 +29,7 @@
     "@cloud-machine/platform-api": "workspace:*",
     "@cloud-machine/client-contracts": "workspace:*",
     "@cloud-machine/workspace-ui": "workspace:*",
-    "@tauri-apps/api": "^2.8.0",
+    "@tauri-apps/api": "^2.12.5",
     "@tanstack/react-query": "^5.101.4",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
@@ -54,7 +54,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
-    "@tauri-apps/cli": "^2.8.0",
+    "@tauri-apps/cli": "^2.12.6",
     "@types/css-tree": "^3.2.0",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.2.0",

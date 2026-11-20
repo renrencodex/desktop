@@ -80,15 +80,11 @@ const initialThemeId = initializeTheme();
 const desktopWindow = getCurrentWindow();
 const desktopViewport = bindDesktopWindowViewport(desktopWindow, window);
 if (import.meta.hot) import.meta.hot.dispose(() => desktopViewport.dispose());
-const synchronizeNativeTheme = createNativeThemeSync(
-  (theme) => desktopWindow.setTheme(theme),
-  (theme) => invoke<void>("preview_webviews_set_theme", { theme }),
-);
-function syncNativeWindowTheme(
-  themeId: Parameters<typeof synchronizeNativeTheme>[0],
-  force = false,
-) {
-  return synchronizeNativeTheme(themeId, force).catch((error: unknown) => {
+// Tauri propagates the window theme to existing child webviews and initializes new children from it.
+// Keep this as the only native theme path; direct WebView2 writes can race the Windows event loop.
+const synchronizeNativeTheme = createNativeThemeSync((theme) => desktopWindow.setTheme(theme));
+function syncNativeWindowTheme(themeId: Parameters<typeof synchronizeNativeTheme>[0]) {
+  return synchronizeNativeTheme(themeId).catch((error: unknown) => {
     console.error("Desktop native theme synchronization failed", error);
   });
 }
@@ -97,13 +93,9 @@ const initialNativeTheme = syncNativeWindowTheme(initialThemeId);
 const stopNativeThemeSync = useThemeStore.subscribe((state) => {
   syncNativeWindowTheme(state.themeId);
 });
-// A newly opened preview may have degraded after the last global acknowledgement; retry on focus.
-const retryNativeTheme = () => syncNativeWindowTheme(useThemeStore.getState().themeId, true);
-window.addEventListener("focus", retryNativeTheme);
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
     stopNativeThemeSync();
-    window.removeEventListener("focus", retryNativeTheme);
   });
 
 function DesktopStartupReady() {

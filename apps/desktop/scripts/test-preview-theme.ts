@@ -1,7 +1,7 @@
 import { chromium, expect } from "@playwright/test";
 
-// Chromium protocol regression only: this does NOT exercise Windows COM, Tauri IPC or WebView2.
-// Keep the fixed method/parameters aligned with preview_theme.rs (also checked by Rust unit tests).
+// Chromium regression only: this checks the browser behavior expected from Tauri's native window
+// theme propagation, but does not exercise Tauri IPC or a real Windows WebView2 instance.
 const browser = await chromium.launch({ headless: true });
 try {
   for (const system of ["light", "dark"] as const) {
@@ -19,12 +19,8 @@ try {
     );
     const pages = await Promise.all([context.newPage(), context.newPage()]);
     for (const page of pages) {
-      const cdp = await context.newCDPSession(page);
       const selected = system === "light" ? "dark" : "light";
-      const setTheme = (theme: "light" | "dark") =>
-        cdp.send("Emulation.setEmulatedMedia", {
-          features: [{ name: "prefers-color-scheme", value: theme }],
-        });
+      const setTheme = (theme: "light" | "dark") => page.emulateMedia({ colorScheme: theme });
       await setTheme(selected);
       await page.goto("https://preview-theme.local/first");
       await expect(page.locator("html")).toHaveAttribute(

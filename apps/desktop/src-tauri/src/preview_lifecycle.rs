@@ -67,17 +67,6 @@ impl Registry {
         Ok(())
     }
 
-    pub fn labels(&self) -> Result<Vec<String>, NativeError> {
-        Ok(self
-            .0
-            .lock()
-            .map_err(|_| super::preview_unavailable())?
-            .labels
-            .iter()
-            .cloned()
-            .collect())
-    }
-
     pub fn take_all(&self) -> Result<Vec<String>, NativeError> {
         let mut inner = self.0.lock().map_err(|_| super::preview_unavailable())?;
         inner.lifetime.0.store(true, Ordering::Release);
@@ -90,19 +79,6 @@ impl Registry {
             inner.labels.extend(labels);
         }
     }
-}
-
-/// Cosmetic failure must not suppress navigation; invalidation must, even after a failed theme call.
-pub async fn prepare_navigation(
-    lifetime: &Lifetime,
-    theme: impl std::future::Future<Output = Result<(), NativeError>>,
-) -> Result<(), NativeError> {
-    lifetime.check()?;
-    if let Err(error) = theme.await {
-        // NativeError messages here are fixed diagnostics, never a URL or authorization token.
-        eprintln!("Preview theme degraded: {}", error.message);
-    }
-    lifetime.check()
 }
 
 #[cfg(test)]
@@ -119,93 +95,35 @@ mod tests {
         assert!(registry.register("late".into(), &old).is_err());
         let new = registry.lifetime().unwrap();
         registry.register("new".into(), &new).unwrap();
-        assert_eq!(registry.labels().unwrap(), vec!["new"]);
         assert!(new.check().is_ok());
+        assert_eq!(registry.take_all().unwrap(), vec!["new"]);
+        assert!(new.check().is_err());
     }
 
     #[test]
-    fn theme_failure_allows_navigation_but_reload_during_theme_does_not() {
-        tauri::async_runtime::block_on(async {
-            let registry = Registry::default();
-            let lifetime = registry.lifetime().unwrap();
-            // Covers COM errors and the timeout, both returned as NativeError by theme::apply.
-            assert!(
-                prepare_navigation(&lifetime, async {
-                    Err(super::super::preview_unavailable())
-                })
-                .await
-                .is_ok()
-            );
-            let result = prepare_navigation(&lifetime, async {
-                registry.take_all().unwrap();
-                Ok(())
-            })
-            .await;
-            assert!(result.is_err());
-        });
-    }
-
-    #[test]
-    fn request_waiting_for_theme_lock_cannot_resume_after_reload() {
-        tauri::async_runtime::block_on(async {
-            let registry = Registry::default();
-            let lock = tauri::async_runtime::Mutex::new(());
-            let held = lock.lock().await;
-            let lifetime = registry.lifetime().unwrap();
-            let mut pending = Box::pin(lock.lock());
-            let waker = std::task::Waker::noop();
-            let mut context = std::task::Context::from_waker(waker);
-            assert!(std::future::Future::poll(pending.as_mut(), &mut context).is_pending());
-            registry.take_all().unwrap();
-            drop(held);
-            let _guard = pending.await;
-            assert!(lifetime.check().is_err());
-        });
-    }
-
-    #[test]
-    fn reload_after_preparation_blocks_queued_navigation_and_show() {
-        tauri::async_runtime::block_on(async {
-            let registry = Registry::default();
-            let lifetime = registry.lifetime().unwrap();
-            prepare_navigation(&lifetime, async { Ok(()) })
-                .await
-                .unwrap();
-            registry.take_all().unwrap();
-            let mut navigated = false;
-            assert!(
-                lifetime
-                    .run_if_current(|| {
-                        navigated = true;
-                        Ok(())
-                    })
-                    .is_err()
-            );
-            assert!(!navigated);
-            // The replacement document is not blocked by the old request's cancellation.
-            registry
-                .lifetime()
-                .unwrap()
+    fn reload_blocks_queued_navigation_and_show() {
+        let registry = Registry::default();
+        let lifetime = registry.lifetime().unwrap();
+        registry.take_all().unwrap();
+        let mut navigated = false;
+        assert!(
+            lifetime
                 .run_if_current(|| {
                     navigated = true;
                     Ok(())
                 })
-                .unwrap();
-            assert!(navigated);
-        });
-    }
-
-    #[test]
-    fn stale_request_never_polls_theme_work() {
-        tauri::async_runtime::block_on(async {
-            let registry = Registry::default();
-            let lifetime = registry.lifetime().unwrap();
-            registry.take_all().unwrap();
-            assert!(
-                prepare_navigation(&lifetime, async { panic!("stale theme was polled") })
-                    .await
-                    .is_err()
-            );
-        });
+                .is_err()
+        );
+        assert!(!navigated);
+        // The replacement document is not blocked by the old request's cancellation.
+        registry
+            .lifetime()
+            .unwrap()
+            .run_if_current(|| {
+                navigated = true;
+                Ok(())
+            })
+            .unwrap();
+        assert!(navigated);
     }
 }

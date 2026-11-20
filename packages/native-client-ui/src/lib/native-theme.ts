@@ -6,23 +6,17 @@ export function nativeWindowTheme(themeId: ThemeId): ThemeColorScheme {
 }
 
 /** Coalesce pending choices; never let an older async completion overwrite the latest choice. */
-export function createNativeThemeSync(
-  setWindowTheme: (theme: PreviewColorScheme) => Promise<void>,
-  setPreviewTheme: (theme: PreviewColorScheme) => Promise<void>,
-) {
+export function createNativeThemeSync(applyTheme: (theme: PreviewColorScheme) => Promise<void>) {
   let revision = 0;
   let applied: PreviewColorScheme | null = null;
   let pending = Promise.resolve();
-  return (themeId: ThemeId, force = false): Promise<void> => {
+  return (themeId: ThemeId): Promise<void> => {
     const theme = nativeWindowTheme(themeId);
     const current = ++revision;
     const task = pending.then(async () => {
-      if (current !== revision || (!force && applied === theme)) return;
-      // Invalidate before trying: partial failure can leave either target at a different theme.
+      if (current !== revision || applied === theme) return;
       applied = null;
-      const results = await Promise.allSettled([setWindowTheme(theme), setPreviewTheme(theme)]);
-      const failure = results.find((result) => result.status === "rejected");
-      if (failure?.status === "rejected") throw failure.reason;
+      await applyTheme(theme);
       applied = theme;
     });
     pending = task.catch(() => {});
