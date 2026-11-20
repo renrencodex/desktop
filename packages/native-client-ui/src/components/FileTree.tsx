@@ -1,5 +1,6 @@
 /**
- * 文件树（15 节 tree）：根目录默认展开，子目录点击展开才 fs.list；目录优先排序、
+ * 文件树（15 节 tree）：根目录默认展开，当前目录的祖先按需展开；其余子目录
+ * 点击展开才 fs.list；目录优先排序、
  * 每行内联操作（重命名 / 删除 / 下载）。
  *
  * 已指定当前目录时，父组件已用 fs.resolve 验证过目录，这里直接以 rootPaths
@@ -79,6 +80,8 @@ export interface FileTreeProps {
   active?: boolean;
   /** bump 触发已展开目录重载。 */
   refreshSignal: number;
+  /** 路径栏与文件操作当前指向的目录；与固定树根独立。 */
+  currentDirectoryPath: string;
   selectedPath: string | null;
   fileStatuses?: Record<string, { dirty: boolean; saving: boolean }>;
   gitDecorations?: Readonly<Record<string, WorkspaceGitDecoration>>;
@@ -130,6 +133,7 @@ export function FileTree(props: FileTreeProps) {
   }
   const localDropEnabled =
     roots.length === 1 && Boolean(props.onLocalDrop) && !props.localDropDisabled;
+  const fallbackDropDirectory = props.currentDirectoryPath;
   const visibleLocalDropTarget = localDropEnabled ? localDropTarget : null;
   return (
     <div
@@ -138,7 +142,9 @@ export function FileTree(props: FileTreeProps) {
         if (!localDropEnabled || !hasLocalFileItems(event.dataTransfer)) return;
         event.preventDefault();
         event.dataTransfer.dropEffect = "copy";
-        setLocalDropTarget(localDropDirectoryAt(event.target, event.currentTarget, roots[0]!));
+        setLocalDropTarget(
+          localDropDirectoryAt(event.target, event.currentTarget, fallbackDropDirectory),
+        );
       }}
       onDragLeave={(event) => {
         if (
@@ -152,7 +158,11 @@ export function FileTree(props: FileTreeProps) {
         if (!localDropEnabled || !hasLocalFileItems(event.dataTransfer)) return;
         event.preventDefault();
         event.stopPropagation();
-        const target = localDropDirectoryAt(event.target, event.currentTarget, roots[0]!);
+        const target = localDropDirectoryAt(
+          event.target,
+          event.currentTarget,
+          fallbackDropDirectory,
+        );
         setLocalDropTarget(null);
         props.onLocalDrop?.(target, event.dataTransfer.items);
       }}
@@ -203,26 +213,40 @@ interface TreeDirProps {
 }
 
 function TreeDir({ rpc, path, name, depth, localDropTarget, ctx }: TreeDirProps) {
-  const selectedDescendantPath = ctx.selectedPath?.startsWith(`${path === "/" ? "" : path}/`)
-    ? ctx.selectedPath
-    : null;
+  const revealedPaths = [
+    ctx.currentDirectoryPath,
+    ctx.selectedPath,
+    ctx.revealRequest?.path,
+  ].filter((candidate): candidate is string =>
+    Boolean(
+      candidate && (candidate === path || candidate.startsWith(`${path === "/" ? "" : path}/`)),
+    ),
+  );
+  const revealedPathKey = revealedPaths.join("\0");
   const [expansion, setExpansion] = useState(() => ({
-    expanded: depth === 0 || selectedDescendantPath !== null,
-    revealedSelectionPath: selectedDescendantPath,
+    expanded: depth === 0 || revealedPaths.length > 0,
+    revealedPathKey,
   }));
   const [entries, setEntries] = useState<FsEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const currentDirectory = ctx.currentDirectoryPath === path;
   const gitDecoration = ctx.gitDecorations?.[path];
   const gitVisual = gitDecoration ? GIT_DECORATIONS[gitDecoration] : null;
 
-  if (expansion.revealedSelectionPath !== selectedDescendantPath) {
+  if (expansion.revealedPathKey !== revealedPathKey) {
     setExpansion({
-      expanded: selectedDescendantPath ? true : expansion.expanded,
-      revealedSelectionPath: selectedDescendantPath,
+      expanded: revealedPaths.length > 0 ? true : expansion.expanded,
+      revealedPathKey,
     });
   }
   const expanded = expansion.expanded;
+
+  useEffect(() => {
+    if (ctx.active === false || !currentDirectory || !rowRef.current) return;
+    rowRef.current.scrollIntoView?.({ block: "nearest" });
+  }, [ctx.active, currentDirectory]);
 
   useEffect(() => {
     if (!expanded || ctx.active === false) return;
@@ -289,9 +313,11 @@ function TreeDir({ rpc, path, name, depth, localDropTarget, ctx }: TreeDirProps)
     <div>
       <ContextMenu>
         <ContextMenuTrigger
+          ref={rowRef}
           role="button"
           tabIndex={0}
           aria-expanded={expanded}
+          aria-current={currentDirectory ? "location" : undefined}
           data-local-drop-directory={path}
           data-git-descendant-status={gitDecoration}
           draggable={depth > 0}
@@ -325,6 +351,8 @@ function TreeDir({ rpc, path, name, depth, localDropTarget, ctx }: TreeDirProps)
             toggle();
           }}
           className={`cm-file-tree-item group flex cursor-pointer items-center gap-1 py-0.5 pr-1 text-zinc-300 hover:bg-zinc-800/60 ${
+            currentDirectory ? "bg-[var(--cm-accent-muted)] text-zinc-100" : ""
+          } ${
             dragOver || localDropTarget === path
               ? "bg-[var(--cm-accent-muted)] ring-1 ring-inset ring-[var(--cm-accent)]"
               : ""

@@ -521,6 +521,8 @@ export function FilesPanel({
 
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
+  const [explorerTreeRoot, setExplorerTreeRoot] = useState<string | null>(null);
+  const [rootFallbackNotice, setRootFallbackNotice] = useState(false);
   const [tabs, setTabs] = useState<EditorTab[]>([]);
   const [retainedEditorPath, setRetainedEditorPath] = useState<string | null>(null);
   const [openingPath, setOpeningPath] = useState<string | null>(null);
@@ -689,6 +691,51 @@ export function FilesPanel({
     },
     [rootPath],
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!connected) return;
+
+    void (async () => {
+      try {
+        const resolved = fsResolveResultSchema.parse(
+          await rpc.call(CMP_METHODS.FS_RESOLVE, { path: "/" }),
+        );
+        if (cancelled) return;
+        if (
+          resolved.exists &&
+          resolved.type === "directory" &&
+          normalizePath(resolved.canonicalPath) === "/"
+        ) {
+          setExplorerTreeRoot("/");
+          setRootFallbackNotice(false);
+          return;
+        }
+      } catch (error) {
+        if (cancelled) return;
+        if (!(error instanceof MachineRpcError) || error.code !== FS_ERROR_FORBIDDEN) {
+          // 瞬时 RPC 故障不降级；让目录树沿用原有轮询与重连恢复。
+          setExplorerTreeRoot("/");
+          setRootFallbackNotice(false);
+          return;
+        }
+      }
+
+      const fallbackPath = normalizePath(rootPath);
+      setExplorerTreeRoot(fallbackPath);
+      setRootFallbackNotice(true);
+      setExplorerStates((states) => {
+        const nextStates = { ...states };
+        for (const explorer of explorersRef.current)
+          nextStates[explorer.id] = createExplorerViewState(fallbackPath);
+        explorerStatesRef.current = nextStates;
+        return nextStates;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [connected, rootPath, rpc]);
 
   const remapExplorerPaths = useCallback((from: string, to: string, directory: boolean) => {
     setExplorerStates((states) => {
@@ -2376,7 +2423,7 @@ export function FilesPanel({
                 void revealSearchResult(explorer.id, searchRoot, match)
               }
             />
-          ) : connected ? (
+          ) : connected && explorerTreeRoot !== null ? (
             <FileTree
               rpc={rpc}
               active={
@@ -2384,8 +2431,9 @@ export function FilesPanel({
                 activeExplorerId === explorer.id &&
                 (closeMobile ? mobileTreeOpen : !explorer.treeCollapsed)
               }
-              rootPaths={[explorerDir]}
+              rootPaths={[explorerTreeRoot]}
               refreshSignal={refreshSignal}
+              currentDirectoryPath={explorerDir}
               selectedPath={
                 treeReveal?.explorerId === explorer.id ? treeReveal.path : explorer.activeFilePath
               }
@@ -2584,6 +2632,25 @@ export function FilesPanel({
 
       {actionError && (
         <div className="border-b px-3 py-1.5 text-xs cm-banner-danger">{actionError}</div>
+      )}
+      {connected && rootFallbackNotice && (
+        <div
+          role="status"
+          className="flex min-w-0 items-center gap-2 border-b px-3 py-1.5 text-xs cm-banner-warning"
+        >
+          <span className="min-w-0 flex-1 truncate">
+            当前电脑暂不支持访问系统根目录，已回退到项目目录；升级 machine-agentd
+            后可访问完整文件系统。
+          </span>
+          <button
+            type="button"
+            aria-label="关闭根目录兼容提示"
+            className="cm-icon-button shrink-0"
+            onClick={() => setRootFallbackNotice(false)}
+          >
+            <X size={12} aria-hidden="true" />
+          </button>
+        </div>
       )}
       {actionNotice && (
         <ActionNoticeBanner

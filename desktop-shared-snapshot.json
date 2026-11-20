@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "policy": "desktop-public-v1",
   "source": {
-    "commit": "2f018f6a3ac074e964af6e09d33f5c8e48203e5b",
+    "commit": "2608dba15b093af94b76e86ff40734fdcdc0ee3c",
     "channel": "production"
   },
   "paths": [
@@ -20,7 +20,7 @@
   "files": {
     "apps/desktop/.env.example": "87ed11742942f030b63fa54811a3d6694da0d1a7c4cdfaf66348fa18ebefe82d",
     "apps/desktop/index.html": "eac75b77323a1569edff497db76ab5bd14bdfc176f33564dce194a25f4cf5e07",
-    "apps/desktop/package.json": "6a4cc334f79ea2808bfb58a4b4b027200f3519d1fa4ed871e73db71ba5b5c856",
+    "apps/desktop/package.json": "d7d07d3fccee66f73a612ccea3782ccfa35319b690c94fbd32fc9a2847d8811e",
     "apps/desktop/scripts/build-windows-release.test.ts": "9d4f4a4b0257d38ccd1263719c01845bc6c2122c707b08e71f3195263c09e789",
     "apps/desktop/scripts/build-windows-release.ts": "c1c614457becd3c025f4e233ae7a047cb06a9e083ccde3b61369b89a6f6a304b",
     "apps/desktop/scripts/file-preview-retry.ts": "88b1484d3e2bc412bc3e2b5a083c89e4e15ab8fcb29f71d421ad13f1ccb03c25",
@@ -152,8 +152,8 @@
     "packages/native-client-ui/src/components/EgressLineDialog.tsx": "418421a986bb0a2571000ac840b8ccd03a7995a90755ee4a5facb2f54cbdf680",
     "packages/native-client-ui/src/components/FileEditor.tsx": "e56e6e2977326bdaac86f112ae185d1433d7334cf17bf6ad42f730437f133700",
     "packages/native-client-ui/src/components/FilePreview.tsx": "2afe214e5c5bb4e554e9ff65767a274bbd4613f5d5a3ad386d9997636da74a86",
-    "packages/native-client-ui/src/components/FilesPanel.tsx": "f721da4e432873f3207c83d5652152dabe4a555f4d421db96c7eec1c219a73e0",
-    "packages/native-client-ui/src/components/FileTree.tsx": "e10902492abf09a302d7768705df4682474a85c70652ea808f317c885f8f04ac",
+    "packages/native-client-ui/src/components/FilesPanel.tsx": "057e080779a5cb84b90f2b812aefa8aa14a6aa5fa68a563548d194b8b277ff89",
+    "packages/native-client-ui/src/components/FileTree.tsx": "a6449b7ffefcdd43cf719b6475ff56bcb183297ace7c5f67065b75726c2d3739",
     "packages/native-client-ui/src/components/MachineDeletionQuoteSummary.tsx": "d2f549164159c811d491755502297195c6254515105ad24d7e7be0566f9efcf4",
     "packages/native-client-ui/src/components/MachineImageSelect.tsx": "a6779386461094981077cd69430e6c707fd293f34a74343cd15caaeed041276b",
     "packages/native-client-ui/src/components/MachinePlanSelect.tsx": "4d99d54087af38fbd13ffbc488a17b87dd4ac43cdb93dd2865d168ad642e1643",
