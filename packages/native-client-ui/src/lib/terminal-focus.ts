@@ -158,6 +158,7 @@ export function bindTerminalFocus(
   let readOnly = true;
   let disposed = false;
   let blinking: boolean | undefined;
+  let focusRevision = 0;
   const sync = () => {
     if (disposed) return;
     const next =
@@ -171,46 +172,71 @@ export function bindTerminalFocus(
     target.setCursorBlink(next);
     container.dataset.terminalCursorBlink = String(next);
   };
+  const syncNow = () => {
+    focusRevision++;
+    sync();
+  };
+  const onFocusIn = () => syncNow();
+  const onFocusOut = (event: FocusEvent) => {
+    const next = event.relatedTarget;
+    if (next instanceof window.Node) {
+      focusRevision++;
+      if (container.contains(next)) return;
+      sync();
+      return;
+    }
+
+    // Ghostty can move focus through its contenteditable host without exposing
+    // a relatedTarget. Wait until that same-task transition has settled before
+    // deciding whether the terminal actually lost focus.
+    const revision = ++focusRevision;
+    window.queueMicrotask(() => {
+      if (disposed || revision !== focusRevision) return;
+      sync();
+    });
+  };
   const blur = () => {
     const element = document.activeElement;
     if (element instanceof window.HTMLElement && container.contains(element)) element.blur();
   };
-  container.addEventListener("focusin", sync);
-  container.addEventListener("focusout", sync);
-  window.addEventListener("focus", sync);
+  container.addEventListener("focusin", onFocusIn);
+  container.addEventListener("focusout", onFocusOut);
+  window.addEventListener("focus", syncNow);
   const onWindowBlur = () => {
     // hasFocus() may still report true while the window blur event is being dispatched.
     if (disposed) return;
+    focusRevision++;
     blinking = false;
     target.setCursorBlink(false);
     container.dataset.terminalCursorBlink = "false";
   };
   window.addEventListener("blur", onWindowBlur);
-  document.addEventListener("visibilitychange", sync);
+  document.addEventListener("visibilitychange", syncNow);
   sync();
   return {
     setFocused(value: boolean) {
       if (disposed) return;
       enabled = value;
       if (!value) blur();
-      sync();
+      syncNow();
     },
     setReadOnly(value: boolean) {
       readOnly = value;
-      sync();
+      syncNow();
     },
     focus() {
       if (!disposed && enabled) target.focus();
-      sync();
+      syncNow();
     },
     dispose() {
       disposed = true;
+      focusRevision++;
       target.setCursorBlink(false);
-      container.removeEventListener("focusin", sync);
-      container.removeEventListener("focusout", sync);
-      window.removeEventListener("focus", sync);
+      container.removeEventListener("focusin", onFocusIn);
+      container.removeEventListener("focusout", onFocusOut);
+      window.removeEventListener("focus", syncNow);
       window.removeEventListener("blur", onWindowBlur);
-      document.removeEventListener("visibilitychange", sync);
+      document.removeEventListener("visibilitychange", syncNow);
       delete container.dataset.terminalCursorBlink;
     },
   };

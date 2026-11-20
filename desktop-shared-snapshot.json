@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "policy": "desktop-public-v1",
   "source": {
-    "commit": "2608dba15b093af94b76e86ff40734fdcdc0ee3c",
+    "commit": "7ab8a7b21a606cedbb5fda67b6315747b759a1a3",
     "channel": "production"
   },
   "paths": [
@@ -20,7 +20,7 @@
   "files": {
     "apps/desktop/.env.example": "87ed11742942f030b63fa54811a3d6694da0d1a7c4cdfaf66348fa18ebefe82d",
     "apps/desktop/index.html": "eac75b77323a1569edff497db76ab5bd14bdfc176f33564dce194a25f4cf5e07",
-    "apps/desktop/package.json": "d7d07d3fccee66f73a612ccea3782ccfa35319b690c94fbd32fc9a2847d8811e",
+    "apps/desktop/package.json": "36eb2b9fae08e60854f8c874da12fb2f727bc08ca1ee3bfe3181a3b42b7af0c3",
     "apps/desktop/scripts/build-windows-release.test.ts": "9d4f4a4b0257d38ccd1263719c01845bc6c2122c707b08e71f3195263c09e789",
     "apps/desktop/scripts/build-windows-release.ts": "c1c614457becd3c025f4e233ae7a047cb06a9e083ccde3b61369b89a6f6a304b",
     "apps/desktop/scripts/file-preview-retry.ts": "88b1484d3e2bc412bc3e2b5a083c89e4e15ab8fcb29f71d421ad13f1ccb03c25",
@@ -253,7 +253,7 @@
     "packages/native-client-ui/src/lib/terminal-canvas-recovery.ts": "061f8c13e81f2ce46bc32f59ab299617b8c1d1406b04891c690270b8b1976365",
     "packages/native-client-ui/src/lib/terminal-channel.ts": "63ecf46e4b65fcdb0106d84c773b19bfae5af9558f0a612b9252c7a4c016daf5",
     "packages/native-client-ui/src/lib/terminal-fit.ts": "d2ad2f50c8f14d52c04cc6e32b8a877797bec49840675ad9207a2d321faa99dc",
-    "packages/native-client-ui/src/lib/terminal-focus.ts": "1ecbaa3b4b0fc22061fcf6b70b273574ee8b9dcb3d71069a1281dc6bda13d53b",
+    "packages/native-client-ui/src/lib/terminal-focus.ts": "a98e0308c1f6635a2d061de6573a4848003de7ff89815c71204bb3f6c163f847",
     "packages/native-client-ui/src/lib/terminal-keybindings.ts": "31ca006eea48b49ba7d7d901cdc2116e966d9d491772f01f4ba6b5d1cd255778",
     "packages/native-client-ui/src/lib/terminal-mouse.ts": "57093b3aa3bdd608f0acf227496abc3a334f4e80c533f8877ce9a3fb78873376",
     "packages/native-client-ui/src/lib/terminal-native-input.ts": "3bb822981073143358baff80a34c0125d67c039432b82f52d51e99ed304b32d4",
