@@ -9,6 +9,7 @@
     "./referral-bank-account": "./src/referral-bank-account.tsx",
     ".": "./src/index.ts",
     "./machine-metrics-cache": "./src/machine-metrics-cache.ts",
+    "./client-performance": "./src/client-performance.ts",
     "./binary-file-download": "./src/binary-file-download.ts",
     "./binary-file-upload": "./src/binary-file-upload.ts",
     "./file-search": "./src/file-search.tsx",

@@ -17,6 +17,12 @@ import {
   terminalFontFamily,
 } from "@cloud-machine/workspace-ui/terminal-font";
 import {
+  clientPerformanceNow,
+  CLIENT_PERFORMANCE_MEASURES,
+  recordClientPerformance,
+  type ClientPerformanceDetail,
+} from "@cloud-machine/workspace-ui/client-performance";
+import {
   ArrowDown,
   ArrowLeft,
   ArrowRight,
@@ -156,7 +162,7 @@ export function Terminal({
   connectionActionsHost?: HTMLElement | null;
   onForegroundProcessChange?: (processName: string | null) => void;
 }) {
-  const { platform } = useClientHost();
+  const { platform, platformKind } = useClientHost();
   const themeId = useThemeStore((theme) => theme.themeId);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [terminalHost, setTerminalHost] = useState<HTMLDivElement | null>(null);
@@ -235,7 +241,6 @@ export function Terminal({
   const virtualKeyboardOpen = useVirtualKeyboardOpen();
   const coarsePointer = useMediaQuery(COARSE_POINTER_QUERY);
   const isPhone = useMediaQuery(PHONE_MEDIA_QUERY);
-  const [snapshotTruncated, setSnapshotTruncated] = useState(false);
   const [resumable, setResumable] = useState(true);
   const resumableRef = useRef(true);
 
@@ -663,6 +668,7 @@ export function Terminal({
       ? TERMINAL_FONT_SIZE.phone
       : TERMINAL_FONT_SIZE.default;
     const initialization = new AbortController();
+    const rendererStartedAt = clientPerformanceNow();
     let disposed = false;
     let generation = 0;
     let connectionTimer: ReturnType<typeof setTimeout> | null = null;
@@ -677,6 +683,120 @@ export function Terminal({
     let resizeFrame = 0;
     let initialFocusFrame = 0;
     const subscriptions: Array<{ dispose(): void }> = [];
+    type PreparedConnection = {
+      ws: WebSocket;
+      startedAt: number;
+      detail: ClientPerformanceDetail;
+    };
+    type ConnectionPreparation = {
+      promise: Promise<PreparedConnection>;
+      cancel: () => void;
+    };
+    let preparedConnection: ConnectionPreparation | null = null;
+    let activePreparation: ConnectionPreparation | null = null;
+
+    const createConnectionPreparation = (
+      startedAt: number,
+      detail: ClientPerformanceDetail,
+    ): ConnectionPreparation => {
+      let cancelled = false;
+      let pendingSocket: WebSocket | null = null;
+      let stage: "ticket" | "socket" = "ticket";
+      const cancel = () => {
+        cancelled = true;
+        if (
+          pendingSocket &&
+          pendingSocket.readyState !== WebSocket.CLOSED &&
+          pendingSocket.readyState !== WebSocket.CLOSING
+        )
+          pendingSocket.close();
+      };
+      const promise = (async (): Promise<PreparedConnection> => {
+        try {
+          const ticket = await createMachineConnectionTicket(machineId, "terminal");
+          if (cancelled || disposed || !keepConnectedRef.current)
+            throw new Error("terminal connection preparation cancelled");
+          if (!ticket) throw new Error("terminal connection ticket missing");
+          recordClientPerformance(
+            CLIENT_PERFORMANCE_MEASURES.terminalTicketReady,
+            startedAt,
+            detail,
+          );
+          stage = "socket";
+          const ws = new WebSocket(
+            gatewayWebSocketUrl(
+              `/machines/${encodeURIComponent(machineId)}/terminal?ticket=${encodeURIComponent(ticket)}`,
+            ),
+          );
+          pendingSocket = ws;
+          await new Promise<void>((resolve, reject) => {
+            const clearPreparationHandlers = () => {
+              ws.onopen = null;
+              ws.onerror = null;
+              ws.onclose = null;
+            };
+            ws.onopen = () => {
+              clearPreparationHandlers();
+              resolve();
+            };
+            ws.onerror = () => {
+              clearPreparationHandlers();
+              reject(new Error("terminal WebSocket handshake failed"));
+            };
+            ws.onclose = () => {
+              clearPreparationHandlers();
+              reject(new Error("terminal WebSocket closed during handshake"));
+            };
+          });
+          if (
+            cancelled ||
+            disposed ||
+            !keepConnectedRef.current ||
+            ws.readyState !== WebSocket.OPEN
+          ) {
+            ws.close();
+            throw new Error("terminal WebSocket preparation cancelled");
+          }
+          recordClientPerformance(
+            CLIENT_PERFORMANCE_MEASURES.terminalSocketOpen,
+            startedAt,
+            detail,
+          );
+          return { ws, startedAt, detail };
+        } catch (error) {
+          const shouldRecordFailure = !cancelled && !disposed && keepConnectedRef.current;
+          cancel();
+          if (shouldRecordFailure)
+            recordClientPerformance(
+              stage === "ticket"
+                ? CLIENT_PERFORMANCE_MEASURES.terminalTicketReady
+                : CLIENT_PERFORMANCE_MEASURES.terminalSocketOpen,
+              startedAt,
+              { ...detail, outcome: "error" },
+            );
+          throw error;
+        }
+      })();
+      return { promise, cancel };
+    };
+
+    const cancelPreparations = () => {
+      const prepared = preparedConnection;
+      preparedConnection = null;
+      prepared?.cancel();
+      const active = activePreparation;
+      activePreparation = null;
+      if (active !== prepared) active?.cancel();
+    };
+
+    if (activeRef.current && keepConnectedRef.current) {
+      preparedConnection = createConnectionPreparation(rendererStartedAt, {
+        client: platformKind,
+        temperature: "cold",
+        outcome: "success",
+      });
+      void preparedConnection.promise.catch(() => undefined);
+    }
 
     const focusInitialTerminal = () => {
       cancelAnimationFrame(initialFocusFrame);
@@ -707,6 +827,7 @@ export function Terminal({
     const disconnect = () => {
       generation += 1;
       connecting = false;
+      cancelPreparations();
       clearConnectionDeadline();
       clearReconnect();
       awaitingScrollRequestRef.current = null;
@@ -760,6 +881,11 @@ export function Terminal({
           return;
         }
         rendererRef.current = renderer;
+        recordClientPerformance(
+          CLIENT_PERFORMANCE_MEASURES.terminalRendererReady,
+          rendererStartedAt,
+          { client: platformKind, temperature: "cold", outcome: "success" },
+        );
         // A new renderer has no cached picture (identity/theme changes included).
         setContentReady(false);
         transitionState("idle");
@@ -847,6 +973,9 @@ export function Terminal({
               wsRef.current?.readyState === WebSocket.CONNECTING)
           )
             return;
+          const attemptTemperature = stateRef.current === "disconnected" ? "warm" : "cold";
+          const preparation = preparedConnection;
+          preparedConnection = null;
           disconnect();
           authorizationRevoked = false;
           connecting = true;
@@ -866,37 +995,24 @@ export function Terminal({
             setNotice("终端连接超时，等待恢复，暂不可输入");
             scheduleReconnect();
           }, 40_000);
-          void createMachineConnectionTicket(machineId, "terminal")
-            .then((ticket) => {
-              if (disposed || currentGeneration !== generation || !keepConnectedRef.current) return;
-              if (!ticket) {
-                revokeAuthorization();
+          const attemptStartedAt = clientPerformanceNow();
+          const detail: ClientPerformanceDetail = {
+            client: platformKind,
+            temperature: attemptTemperature,
+            outcome: "success",
+          };
+          const connection = preparation ?? createConnectionPreparation(attemptStartedAt, detail);
+          activePreparation = connection;
+          void connection.promise
+            .then(({ ws, startedAt, detail: attemptDetail }) => {
+              if (activePreparation === connection) activePreparation = null;
+              if (disposed || currentGeneration !== generation || !keepConnectedRef.current) {
+                ws.close();
                 return;
               }
-              const ws = new WebSocket(
-                gatewayWebSocketUrl(
-                  `/machines/${encodeURIComponent(machineId)}/terminal?ticket=${encodeURIComponent(ticket)}`,
-                ),
-              );
               wsRef.current = ws;
               let receivedOpened = false;
               let attachmentActive = false;
-              ws.onopen = () => {
-                if (currentGeneration !== generation) return;
-                fit();
-                ws.send(
-                  JSON.stringify({
-                    type: restart ? "restart" : "attach",
-                    workspaceId,
-                    terminalTabId,
-                    paneId,
-                    cols: renderer.cols,
-                    rows: renderer.rows,
-                    cwd,
-                    launchProfile: launchProfileRef.current,
-                  }),
-                );
-              };
               ws.onmessage = (event: MessageEvent<string>) => {
                 if (currentGeneration !== generation) return;
                 let message: ServerMessage;
@@ -909,6 +1025,11 @@ export function Terminal({
                   case "opened": {
                     if (receivedOpened) break;
                     receivedOpened = true;
+                    recordClientPerformance(
+                      CLIENT_PERFORMANCE_MEASURES.terminalOpened,
+                      startedAt,
+                      attemptDetail,
+                    );
                     attachmentActive = message.state !== "exited";
                     const supportsRemotePosition = message.remoteScrollPosition === true;
                     remoteScrollPositionSupportedRef.current = supportsRemotePosition;
@@ -928,7 +1049,6 @@ export function Terminal({
                     awaitingScrollRequestRef.current = null;
                     renderer.reset();
                     setShowScrollToBottom(false);
-                    setSnapshotTruncated(message.snapshotTruncated === true);
                     resumableRef.current = message.resumable !== false;
                     setResumable(resumableRef.current);
                     renderer.write(message.snapshot ? base64ToBytes(message.snapshot) : "", () => {
@@ -939,6 +1059,13 @@ export function Terminal({
                       syncLocalScrollPosition(renderer, message.state === "exited");
                       connecting = false;
                       setContentReady(true);
+                      recordClientPerformance(
+                        CLIENT_PERFORMANCE_MEASURES.terminalInteractive,
+                        startedAt,
+                        message.state === "exited"
+                          ? { ...attemptDetail, outcome: "error" }
+                          : attemptDetail,
+                      );
                       if (stateRef.current !== "connecting") return;
                       if (message.state === "exited") {
                         transitionState("exited");
@@ -1124,8 +1251,22 @@ export function Terminal({
                 transitionState(connecting ? "connecting" : "disconnected");
                 setNotice("终端连接中断，正在自动恢复…");
               };
+              fit();
+              ws.send(
+                JSON.stringify({
+                  type: restart ? "restart" : "attach",
+                  workspaceId,
+                  terminalTabId,
+                  paneId,
+                  cols: renderer.cols,
+                  rows: renderer.rows,
+                  cwd,
+                  launchProfile: launchProfileRef.current,
+                }),
+              );
             })
             .catch((error: unknown) => {
+              if (activePreparation === connection) activePreparation = null;
               if (disposed || currentGeneration !== generation) return;
               if (isDefinitiveConnectionTicketRejection(error)) {
                 revokeAuthorization();
@@ -1233,6 +1374,12 @@ export function Terminal({
       })
       .catch(() => {
         if (disposed) return;
+        cancelPreparations();
+        recordClientPerformance(
+          CLIENT_PERFORMANCE_MEASURES.terminalRendererReady,
+          rendererStartedAt,
+          { client: platformKind, temperature: "cold", outcome: "error" },
+        );
         transitionState("error");
         setNotice("终端渲染器加载失败，请刷新页面后重试");
       });
@@ -1254,6 +1401,7 @@ export function Terminal({
     cwd,
     machineId,
     paneId,
+    platformKind,
     terminalTabId,
     themeId,
     transitionState,
@@ -1413,13 +1561,11 @@ export function Terminal({
             )}
           </div>
         )}
-      {(fallbackRenderer || snapshotTruncated || !resumable) && (
+      {(fallbackRenderer || !resumable) && (
         <div className="flex min-h-7 shrink-0 items-center border-b px-2 py-1 text-[11px] cm-banner-warning">
           {fallbackRenderer
             ? "Ghostty Web 加载失败，当前使用兼容终端"
-            : !resumable
-              ? "当前电脑镜像较旧，刷新后不能恢复终端进程"
-              : "较早的终端历史已截断"}
+            : "当前电脑镜像较旧，刷新后不能恢复终端进程"}
         </div>
       )}
       {clipboardError && (

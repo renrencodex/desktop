@@ -8,7 +8,12 @@ import {
 } from "@cloud-machine/api-client";
 import { isMachineRuntimeAvailable } from "@cloud-machine/client-contracts";
 import { hasCapability } from "@cloud-machine/platform-api";
-import { updateWorkbenchApplicationPane } from "@cloud-machine/workspace-ui";
+import {
+  CLIENT_PERFORMANCE_MEASURES,
+  ensureWorkspaceNavigation,
+  recordWorkspaceNavigation,
+  updateWorkbenchApplicationPane,
+} from "@cloud-machine/workspace-ui";
 import { ApplicationsWorkbench } from "../components/ApplicationsWorkbench";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileDiff, FolderTree, Globe2, LayoutGrid, Plus, TerminalSquare, X } from "lucide-react";
@@ -82,11 +87,25 @@ function layoutRefreshBlocked(state: LayoutSyncState): boolean {
   return state === "saving" || state === "error";
 }
 
-const TerminalWorkspace = lazy(() =>
-  import("../components/TerminalWorkspace").then((module) => ({
+let terminalWorkspacePromise: ReturnType<typeof loadTerminalWorkspace> | null = null;
+
+function loadTerminalWorkspace() {
+  return import("../components/TerminalWorkspace").then((module) => ({
     default: module.TerminalWorkspace,
-  })),
-);
+  }));
+}
+
+export function preloadTerminalWorkspace(): void {
+  terminalWorkspacePromise ??= loadTerminalWorkspace();
+  void terminalWorkspacePromise.catch(() => {
+    terminalWorkspacePromise = null;
+  });
+}
+
+const TerminalWorkspace = lazy(() => {
+  terminalWorkspacePromise ??= loadTerminalWorkspace();
+  return terminalWorkspacePromise;
+});
 const FilesPanel = lazy(() =>
   import("../components/FilesPanel").then((module) => ({ default: module.FilesPanel })),
 );
@@ -113,7 +132,7 @@ export function DirectoryWorkbenchPage(props: {
   const visible = props.active ?? true;
   const runtime = useWorkbenchRuntime();
   const report = runtime?.report;
-  const { platform } = useClientHost();
+  const { platform, platformKind } = useClientHost();
   const router = useRouter();
   const routePath = usePathname();
   const routeSearch = useSearchParams();
@@ -161,6 +180,31 @@ export function DirectoryWorkbenchPage(props: {
     refetchOnWindowFocus: visible,
     enabled: !machineProvisioning,
   });
+  const workspacePerformanceKey = `${machineId}:${workspaceId}`;
+  useEffect(() => {
+    if (visible)
+      ensureWorkspaceNavigation(workspacePerformanceKey, {
+        client: platformKind,
+        temperature: "cold",
+      });
+  }, [platformKind, visible, workspacePerformanceKey]);
+  useEffect(() => {
+    if (!visible || !layoutQuery.data) return;
+    recordWorkspaceNavigation(
+      workspacePerformanceKey,
+      CLIENT_PERFORMANCE_MEASURES.workspaceLayoutReady,
+    );
+  }, [layoutQuery.data, visible, workspacePerformanceKey]);
+  useEffect(() => {
+    if (!visible || !machineQuery.data || !workspaceQuery.data || !layoutQuery.data) return;
+    const frame = requestAnimationFrame(() =>
+      recordWorkspaceNavigation(
+        workspacePerformanceKey,
+        CLIENT_PERFORMANCE_MEASURES.workspaceInteractive,
+      ),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [layoutQuery.data, machineQuery.data, visible, workspacePerformanceKey, workspaceQuery.data]);
   const queryClient = useQueryClient();
   const machineRuntimeAvailable = Boolean(
     machineQuery.data && isMachineRuntimeAvailable(machineQuery.data),
@@ -563,14 +607,15 @@ export function DirectoryWorkbenchPage(props: {
 
   const machine = machineQuery.data;
   const workspace = workspaceQuery.data;
+  const statusKnownUnavailable =
+    statusQuery.data !== undefined && statusQuery.data.state !== "available";
   const available =
     !recoveryTarget &&
-    !statusQuery.isError &&
     !machineQuery.isError &&
     !workspaceQuery.isError &&
     machine.readyAt !== null &&
     isMachineRuntimeAvailable(machine) &&
-    statusQuery.data?.state === "available";
+    !statusKnownUnavailable;
   const showUnavailableBanner = !available && !statusQuery.isPending;
   const activeTab = activeLayoutTab;
   const explorerTabs = layout.workspacePane.tabs.filter(

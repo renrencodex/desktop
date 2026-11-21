@@ -10,11 +10,13 @@ import {
 } from "@cloud-machine/client-contracts";
 import {
   CLI_STORE_CONNECTION_POLL_INTERVAL_MS,
+  CLIENT_PERFORMANCE_MEASURES,
   canLaunchCliApp,
   cliStoreInventoryPollInterval,
   closeCliApplication,
   mergeCliCatalog,
   openCliApplication,
+  recordWorkspaceNavigation,
   sortInstalledCliApps,
 } from "@cloud-machine/workspace-ui";
 import { LayoutGrid } from "lucide-react";
@@ -65,6 +67,7 @@ export function ApplicationsWorkbench(props: {
     queryKey: ["cli-store", accountId, props.machineId],
     queryFn: () => api.cliStore.inventory(props.machineId),
     enabled: props.active,
+    staleTime: 15_000,
     retry: false,
     refetchInterval: (query) =>
       cliStoreInventoryPollInterval(props.active, query.state.data?.operation),
@@ -72,7 +75,8 @@ export function ApplicationsWorkbench(props: {
   const connection = useQuery({
     queryKey: ["machine-connection", accountId, props.machineId],
     queryFn: () => api.machines.connection(props.machineId),
-    enabled: applicationSurfaceActive,
+    enabled: props.active,
+    staleTime: 15_000,
     retry: false,
     refetchInterval: applicationSurfaceActive ? CLI_STORE_CONNECTION_POLL_INTERVAL_MS : false,
   });
@@ -80,6 +84,7 @@ export function ApplicationsWorkbench(props: {
     queryKey: ["cli-store-catalog", accountId],
     queryFn: () => api.cliStore.catalog(),
     enabled: props.active,
+    staleTime: 5 * 60_000,
     retry: false,
     refetchInterval: props.active ? 15_000 : false,
   });
@@ -90,6 +95,14 @@ export function ApplicationsWorkbench(props: {
   const [error, setError] = useState<string | null>(null);
   const connectionOnline = connection.data?.online ?? inventory.data?.online;
   const refetchInventory = inventory.refetch;
+
+  useEffect(() => {
+    if (!props.active || !inventory.data || !catalog.data) return;
+    recordWorkspaceNavigation(
+      `${props.machineId}:${props.workspaceId}`,
+      CLIENT_PERFORMANCE_MEASURES.applicationsReady,
+    );
+  }, [catalog.data, inventory.data, props.active, props.machineId, props.workspaceId]);
 
   useEffect(() => {
     const reconnected =

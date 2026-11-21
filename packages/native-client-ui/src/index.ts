@@ -15,6 +15,7 @@ export {
   type LinkProps,
 } from "./host";
 export { AuthedLayout } from "./components/AppLayout";
+export { preloadDirectoryWorkbench } from "./components/WorkbenchRuntime";
 export { ClientRouteOutlet, parseClientRoute, type ClientRouteMatch } from "./routes";
 export { initializeTheme, useThemeStore } from "./stores/theme";
 export { useAuthStore } from "./stores/auth";

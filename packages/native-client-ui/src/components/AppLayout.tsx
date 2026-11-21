@@ -6,6 +6,10 @@ import {
   DEFAULT_WORKSPACE_DISPLAY_NAME,
   workspaceRootForRegistrations,
 } from "@cloud-machine/client-contracts";
+import {
+  beginWorkspaceNavigation,
+  clearWorkspaceNavigationPerformance,
+} from "@cloud-machine/workspace-ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useClientHost, usePathname, useRouter, useSearchParams } from "../host";
 import {
@@ -31,6 +35,7 @@ import { api } from "../lib/api";
 import { lifecycleLabel, regionLabel } from "../lib/display-labels";
 import { useUnsavedNavigationGuard } from "../lib/navigation-guard";
 import {
+  preloadDirectoryWorkbench,
   WorkbenchRuntimeProvider,
   RetainedWorkspaces,
   useWorkbenchRuntime,
@@ -57,6 +62,7 @@ import { useThemeStore } from "../stores/theme";
 import { useWorkbenchStore } from "../stores/workbench";
 import { userErrorMessage } from "../lib/user-error";
 import { isWorkspaceRoute } from "../lib/workspace-navigation";
+import { workspaceLocation } from "../lib/workspace-cache";
 import { useBackDismiss, useOnlineStatus, useResponsiveViewport } from "../lib/responsive";
 import { toastError, toastSuccess } from "../stores/toast";
 import { CommandPalette, type CommandPaletteItem } from "./CommandPalette";
@@ -132,8 +138,13 @@ export function AuthedLayout({ children }: { children: ReactNode }) {
   const workbenchHydrated = useWorkbenchStore((state) => state.hydrated);
   const hydrateWorkbench = useWorkbenchStore((state) => state.hydrate);
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   useEffect(() => hydrateWorkbench(), [hydrateWorkbench]);
+
+  useEffect(() => {
+    clearWorkspaceNavigationPerformance();
+  }, [userId]);
 
   useEffect(() => {
     if (status === "booting") void restoreSession();
@@ -143,10 +154,24 @@ export function AuthedLayout({ children }: { children: ReactNode }) {
     if (status === "unauthenticated") router.replace("/login");
   }, [status, router]);
 
-  // 登录成功后后台预热终端 wasm，首开工作区终端不必等待下载编译。
+  // 登录成功后预热终端渲染器，并在空闲时加载工作台与终端组件。
   useEffect(() => {
-    if (status === "authenticated") prewarmTerminalRenderer();
-  }, [status]);
+    if (status !== "authenticated") return;
+    prewarmTerminalRenderer();
+    if (userId)
+      void queryClient.prefetchQuery({
+        queryKey: ["cli-store-catalog", userId],
+        queryFn: () => api.cliStore.catalog(),
+        staleTime: 5 * 60_000,
+      });
+    const preload = () => preloadDirectoryWorkbench();
+    if ("requestIdleCallback" in window) {
+      const handle = window.requestIdleCallback(preload, { timeout: 1_500 });
+      return () => window.cancelIdleCallback(handle);
+    }
+    const handle = globalThis.setTimeout(preload, 250);
+    return () => globalThis.clearTimeout(handle);
+  }, [queryClient, status, userId]);
 
   if (status !== "authenticated" || !workbenchHydrated) {
     return <FullScreenLoading />;
@@ -736,6 +761,62 @@ function MachineTreeItem(props: {
     queryFn: () => api.workspaces.list(machine.id),
     enabled: expanded && machine.readyAt !== null,
   });
+  useEffect(() => {
+    queryClient.setQueryData(["machine", machine.id], machine);
+    const workspaces = workspacesQuery.data;
+    if (!workspaces) return;
+    for (const workspace of workspaces)
+      queryClient.setQueryData(["workspace", workspace.id], workspace);
+    const saveData = (navigator as Navigator & { connection?: { readonly saveData?: boolean } })
+      .connection?.saveData;
+    if (!expanded || saveData || document.visibilityState === "hidden") return;
+
+    const recentOrder = new Map<string, number>();
+    for (const [index, entry] of (runtime?.recent ?? []).entries()) {
+      const url = new URL(entry.href, window.location.origin);
+      const location = workspaceLocation(url.pathname, url.search.slice(1));
+      if (location?.machineId === machine.id) recentOrder.set(location.workspaceId, index);
+    }
+    const candidates = [...workspaces]
+      .sort(
+        (left, right) =>
+          (recentOrder.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+          (recentOrder.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+      )
+      .slice(0, 8);
+    let cancelled = false;
+    const prefetch = async () => {
+      const queue = [...candidates];
+      const worker = async () => {
+        while (!cancelled && document.visibilityState !== "hidden") {
+          const workspace = queue.shift();
+          if (!workspace) return;
+          await queryClient
+            .prefetchQuery({
+              queryKey: ["workbench-layout", workspace.id],
+              queryFn: () => api.workbench.getLayout(workspace.id),
+              staleTime: 30_000,
+              retry: false,
+            })
+            .catch(() => undefined);
+        }
+      };
+      await Promise.all([worker(), worker()]);
+    };
+    const start = () => void prefetch();
+    if ("requestIdleCallback" in window) {
+      const handle = window.requestIdleCallback(start, { timeout: 2_000 });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback(handle);
+      };
+    }
+    const handle = globalThis.setTimeout(start, 300);
+    return () => {
+      cancelled = true;
+      globalThis.clearTimeout(handle);
+    };
+  }, [expanded, machine, queryClient, runtime?.recent, workspacesQuery.data]);
   const workspaceRoot = workspaceRootForRegistrations(workspacesQuery.data ?? []);
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["workspaces", machine.id] });
   const createWorkspace = useMutation({
@@ -1509,6 +1590,8 @@ function WorkspaceTreeItem(props: {
   const { workspace, machine } = props;
   const runtime = useWorkbenchRuntime();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const { platformKind } = useClientHost();
   const workspacePath = `/machines/${machine.id}/workspaces/${workspace.id}`;
   const selected = isWorkspaceRoute(props.pathname, machine.id, workspace.id);
   return (
@@ -1522,6 +1605,16 @@ function WorkspaceTreeItem(props: {
         data-prefetch-href={workspacePath}
         onClick={() => {
           if (!props.confirmNavigation(workspacePath)) return;
+          queryClient.setQueryData(["machine", machine.id], machine);
+          queryClient.setQueryData(["workspace", workspace.id], workspace);
+          beginWorkspaceNavigation(`${machine.id}:${workspace.id}`, {
+            client: platformKind,
+            temperature: runtime?.entries.some(
+              (entry) => entry.key === `${machine.id}:${workspace.id}`,
+            )
+              ? "warm"
+              : "cold",
+          });
           props.onNavigate();
           if (runtime?.navigateCached(workspacePath, props.replaceNavigation)) return;
           if (props.replaceNavigation) router.replace(workspacePath);

@@ -23,7 +23,8 @@ export interface WorkspaceShellModel {
   readonly hasUnsaved: boolean;
 }
 
-export const MAX_CONNECTED_WORKSPACES = 5;
+export const MAX_RETAINED_WORKSPACES = 10;
+export const MAX_CONNECTED_WORKSPACES = 10;
 
 /** 解析主壳可常驻的 Workspace 地址，并移除一次性 session 参数。 */
 export function workspaceLocation(pathname: string, search = ""): WorkspaceLocation | null {
@@ -59,7 +60,7 @@ export function trimWorkspaces<T extends { key: string }>(
   entries: T[],
   active: string | undefined,
   resources: Record<string, WorkspaceProtection>,
-  limit = 5,
+  limit = MAX_RETAINED_WORKSPACES,
 ): T[] {
   let remaining = entries.length;
   return entries.filter((entry) => {

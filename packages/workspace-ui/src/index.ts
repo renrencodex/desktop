@@ -16,6 +16,7 @@ export {
 export {
   connectedWorkspaceKeys,
   MAX_CONNECTED_WORKSPACES,
+  MAX_RETAINED_WORKSPACES,
   protectedWorkspace,
   trimWorkspaces,
   workspaceLocation,
@@ -23,6 +24,19 @@ export {
   type WorkspaceProtection,
   type WorkspaceShellModel,
 } from "./workspace-shell";
+export {
+  beginWorkspaceNavigation,
+  clearWorkspaceNavigationPerformance,
+  clientPerformanceNow,
+  CLIENT_PERFORMANCE_MEASURES,
+  ensureWorkspaceNavigation,
+  recordClientPerformance,
+  recordWorkspaceNavigation,
+  type ClientPerformanceDetail,
+  type ClientPerformanceKind,
+  type ClientPerformanceMeasure,
+  type ClientPerformanceTemperature,
+} from "./client-performance";
 export { configureWorkspaceMonacoWorkers } from "./monaco";
 export { CloudWorkspaceWorkbench, type CloudWorkspaceWorkbenchProps } from "./workspace-workbench";
 export {

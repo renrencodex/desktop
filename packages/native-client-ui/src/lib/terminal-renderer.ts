@@ -95,6 +95,8 @@ async function loadGhostty(): Promise<import("ghostty-web").Ghostty> {
 
 /** 登录后后台预热 ghostty-wasm 与其 JS chunk，终端首开不再等待下载编译。 */
 export function prewarmTerminalRenderer(): void {
+  if (typeof document !== "undefined" && document.fonts)
+    void document.fonts.load('14px "Iosevka Term"').catch(() => {});
   void loadGhostty().catch(() => {
     // 预热失败（如离线）不应毒化缓存，让真正的首开走完整加载与回退逻辑。
     ghosttyPromise = null;

@@ -43,6 +43,7 @@ import {
   BrandLogo,
   createNativeThemeSync,
   machineMetricsCache,
+  preloadDirectoryWorkbench,
 } from "@cloud-machine/native-client-ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -329,7 +330,10 @@ function DesktopApp() {
       replace: (href) => {
         navigate(href, true);
       },
-      prefetch: () => undefined,
+      prefetch: (href) => {
+        if (/^\/machines\/[^/]+\/workspaces\/[^/]+(?:[/?#]|$)/.test(href))
+          preloadDirectoryWorkbench();
+      },
     };
   }, [navigate]);
 

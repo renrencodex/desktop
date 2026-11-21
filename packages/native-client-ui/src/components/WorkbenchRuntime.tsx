@@ -29,9 +29,26 @@ import {
 } from "./workbench-runtime-context";
 export { useWorkbenchRuntime } from "./workbench-runtime-context";
 
-const Workbench = lazy(() =>
-  import("../views/DirectoryWorkbenchPage").then((m) => ({ default: m.DirectoryWorkbenchPage })),
-);
+let workbenchModulePromise: ReturnType<typeof loadWorkbenchModule> | null = null;
+
+function loadWorkbenchModule() {
+  return import("../views/DirectoryWorkbenchPage").then((module) => {
+    module.preloadTerminalWorkspace();
+    return { default: module.DirectoryWorkbenchPage };
+  });
+}
+
+export function preloadDirectoryWorkbench(): void {
+  workbenchModulePromise ??= loadWorkbenchModule();
+  void workbenchModulePromise.catch(() => {
+    workbenchModulePromise = null;
+  });
+}
+
+const Workbench = lazy(() => {
+  workbenchModulePromise ??= loadWorkbenchModule();
+  return workbenchModulePromise;
+});
 /** One account-scoped owner, above route pages. Never writes source text to storage. */
 export function WorkbenchRuntimeProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "/";
