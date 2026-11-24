@@ -37,6 +37,7 @@ export {
   type ClientPerformanceMeasure,
   type ClientPerformanceTemperature,
 } from "./client-performance";
+export { mergeMachineDetailSnapshot } from "./machine-detail-snapshot";
 export { configureWorkspaceMonacoWorkers } from "./monaco";
 export { CloudWorkspaceWorkbench, type CloudWorkspaceWorkbenchProps } from "./workspace-workbench";
 export {

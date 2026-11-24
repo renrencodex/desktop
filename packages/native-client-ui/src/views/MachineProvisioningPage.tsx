@@ -53,6 +53,7 @@ export function MachineProvisioningPage({ machineId }: { machineId: string }) {
   useEffect(() => {
     const status = statusQuery.data;
     if (status?.ready) {
+      queryClient.removeQueries({ queryKey: ["machine", machineId], exact: true });
       void queryClient.invalidateQueries({ queryKey: ["machines"] });
       router.replace(`/machines/${machineId}`);
     }

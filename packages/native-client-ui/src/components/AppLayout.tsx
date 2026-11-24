@@ -9,6 +9,7 @@ import {
 import {
   beginWorkspaceNavigation,
   clearWorkspaceNavigationPerformance,
+  mergeMachineDetailSnapshot,
 } from "@cloud-machine/workspace-ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useClientHost, usePathname, useRouter, useSearchParams } from "../host";
@@ -762,7 +763,9 @@ function MachineTreeItem(props: {
     enabled: expanded && machine.readyAt !== null,
   });
   useEffect(() => {
-    queryClient.setQueryData(["machine", machine.id], machine);
+    queryClient.setQueryData<Machine>(["machine", machine.id], (current) =>
+      mergeMachineDetailSnapshot(current, machine),
+    );
     const workspaces = workspacesQuery.data;
     if (!workspaces) return;
     for (const workspace of workspaces)
@@ -1605,7 +1608,9 @@ function WorkspaceTreeItem(props: {
         data-prefetch-href={workspacePath}
         onClick={() => {
           if (!props.confirmNavigation(workspacePath)) return;
-          queryClient.setQueryData(["machine", machine.id], machine);
+          queryClient.setQueryData<Machine>(["machine", machine.id], (current) =>
+            mergeMachineDetailSnapshot(current, machine),
+          );
           queryClient.setQueryData(["workspace", workspace.id], workspace);
           beginWorkspaceNavigation(`${machine.id}:${workspace.id}`, {
             client: platformKind,

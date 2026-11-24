@@ -20,6 +20,7 @@ import {
   type Machine,
   type MachineDeletionQuote,
   type MachineEvent,
+  type MachineProvisioningStatus,
 } from "@cloud-machine/api-client";
 import { isMachineRuntimeAvailable } from "@cloud-machine/client-contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -226,6 +227,9 @@ export function MachineDetailPage({ machineId }: { machineId: string }) {
     refetchInterval: 15_000,
   });
   const machineNotFound = isNotFoundError(machineQuery.error);
+  const provisioningReady =
+    queryClient.getQueryData<MachineProvisioningStatus>(["machine-provisioning", machineId])
+      ?.ready === true;
 
   useEffect(() => {
     if (accountId && machineQuery.data && !machineQuery.isPlaceholderData)
@@ -246,10 +250,27 @@ export function MachineDetailPage({ machineId }: { machineId: string }) {
 
   useEffect(() => {
     const machine = machineQuery.data;
-    if (machine && !machineQuery.isPlaceholderData && machine.readyAt === null) {
+    if (!machine || machineQuery.isPlaceholderData) return;
+    if (machine.readyAt !== null) {
+      if (provisioningReady) {
+        queryClient.removeQueries({
+          queryKey: ["machine-provisioning", machineId],
+          exact: true,
+        });
+      }
+      return;
+    }
+    if (!provisioningReady) {
       router.replace(`/machines/${machine.id}/provisioning`);
     }
-  }, [machineQuery.data, machineQuery.isPlaceholderData, router]);
+  }, [
+    machineId,
+    machineQuery.data,
+    machineQuery.isPlaceholderData,
+    provisioningReady,
+    queryClient,
+    router,
+  ]);
 
   const invalidate = () => void queryClient.invalidateQueries({ queryKey: ["machine", machineId] });
   const onActionError = (err: unknown) => setActionError(userErrorMessage(err, "操作失败，请重试"));
@@ -473,6 +494,9 @@ export function MachineDetailPage({ machineId }: { machineId: string }) {
         {userErrorMessage(machineQuery.error, "加载电脑详情失败，请稍后重试")}
       </div>
     );
+  }
+  if (provisioningReady && machineQuery.data.readyAt === null) {
+    return <MachineDetailSkeleton tab={tab} />;
   }
 
   const m = machineQuery.data;

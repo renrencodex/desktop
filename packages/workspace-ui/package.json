@@ -23,6 +23,7 @@
     "./terminal-keyboard": "./src/terminal-keyboard.ts",
     "./terminal-font": "./src/terminal-font.ts",
     "./terminal-canvas-selection": "./src/terminal-canvas-selection.ts",
+    "./terminal-size-sync": "./src/terminal-size-sync.ts",
     "./workspace-diff-tree": "./src/workspace-diff-tree.ts",
     "./styles.css": "./src/styles.css"
   },

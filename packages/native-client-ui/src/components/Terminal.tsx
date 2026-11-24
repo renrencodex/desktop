@@ -16,6 +16,7 @@ import {
   onTerminalFontsLoaded,
   terminalFontFamily,
 } from "@cloud-machine/workspace-ui/terminal-font";
+import { bindTerminalSizeSync } from "@cloud-machine/workspace-ui/terminal-size-sync";
 import {
   clientPerformanceNow,
   CLIENT_PERFORMANCE_MEASURES,
@@ -171,6 +172,7 @@ export function Terminal({
     setTerminalHost(node);
   }, []);
   const rendererRef = useRef<TerminalRenderer | null>(null);
+  const sizeSyncRef = useRef<ReturnType<typeof bindTerminalSizeSync> | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const clipboardEpochRef = useRef(0);
   const keyboardHostRef = useRef<TerminalKeyboardHost>({ copy() {}, paste() {} });
@@ -248,18 +250,21 @@ export function Terminal({
     if (stateRef.current !== next) {
       clipboardEpochRef.current++;
       setClipboardFallback(null);
+      if (next !== "connected") sizeSyncRef.current?.resetConnection();
     }
     stateRef.current = next;
     setState(next);
   }, []);
 
   useLayoutEffect(() => {
-    if (activeRef.current !== active || focusedRef.current !== focused) clipboardEpochRef.current++;
+    const paneFocusChanged = activeRef.current !== active || focusedRef.current !== focused;
+    if (paneFocusChanged) clipboardEpochRef.current++;
     activeRef.current = active;
     keepConnectedRef.current = keepConnected;
     focusedRef.current = focused;
     rendererRef.current?.setVisible(active);
     rendererRef.current?.setFocused(active && focused);
+    if (paneFocusChanged) sizeSyncRef.current?.syncFocus();
     onForegroundRef.current = onForegroundProcessChange;
   }, [active, focused, keepConnected, onForegroundProcessChange]);
 
@@ -276,46 +281,6 @@ export function Terminal({
       container.contains(document.activeElement),
     );
   }, []);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const window = container.ownerDocument.defaultView!;
-    let frame = 0;
-    const claimSize = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const renderer = rendererRef.current;
-        const ws = wsRef.current;
-        if (
-          renderer &&
-          ws?.readyState === WebSocket.OPEN &&
-          stateRef.current === "connected" &&
-          hasInputFocus()
-        ) {
-          if (!container.clientWidth || !container.clientHeight) return;
-          renderer.fit();
-          ws.send(
-            JSON.stringify({
-              type: "resize",
-              cols: renderer.cols,
-              rows: renderer.rows,
-              claimSize: true,
-            }),
-          );
-        }
-      });
-    };
-    container.addEventListener("focusin", claimSize);
-    window.addEventListener("focus", claimSize);
-    const stopLayout = desktopLayoutGate.subscribe(claimSize);
-    return () => {
-      stopLayout();
-      cancelAnimationFrame(frame);
-      container.removeEventListener("focusin", claimSize);
-      window.removeEventListener("focus", claimSize);
-    };
-  }, [hasInputFocus]);
 
   useEffect(() => {
     const document = containerRef.current?.ownerDocument;
@@ -917,21 +882,23 @@ export function Terminal({
           focusSelectedTerminal();
         }
 
-        const fit = () => {
-          if (
-            desktopLayoutGate.isSuspended() ||
-            !activeRef.current ||
-            !container.clientWidth ||
-            !container.clientHeight
-          )
-            return;
-          try {
-            renderer.fit();
-            syncLocalScrollPosition(renderer);
-          } catch {
-            // Hidden or transitioning panes can temporarily report zero dimensions.
-          }
-        };
+        const sizeSync = bindTerminalSizeSync(container, renderer, {
+          isActive: () => activeRef.current,
+          isSelected: () => focusedRef.current,
+          connectedSocket: () => {
+            const ws = wsRef.current;
+            return rendererRef.current === renderer &&
+              stateRef.current === "connected" &&
+              ws?.readyState === WebSocket.OPEN
+              ? ws
+              : null;
+          },
+          onFit: () => syncLocalScrollPosition(renderer),
+          layoutGate: desktopLayoutGate,
+        });
+        sizeSyncRef.current = sizeSync;
+        subscriptions.push(sizeSync);
+        const { fit } = sizeSync;
 
         const revokeAuthorization = () => {
           authorizationRevoked = true;
@@ -1074,21 +1041,7 @@ export function Terminal({
                         reconnectAttempt = 0;
                         renderer.setReadOnly(false);
                         transitionState("connected");
-                        fit();
-                        if (
-                          activeRef.current &&
-                          !desktopLayoutGate.isSuspended() &&
-                          ws.readyState === WebSocket.OPEN
-                        ) {
-                          ws.send(
-                            JSON.stringify({
-                              type: "resize",
-                              cols: renderer.cols,
-                              rows: renderer.rows,
-                              claimSize: hasInputFocus(),
-                            }),
-                          );
-                        }
+                        sizeSync.opened();
                       }
                     });
                     break;
@@ -1390,6 +1343,7 @@ export function Terminal({
       initialization.abort();
       disconnect();
       subscriptions.forEach((subscription) => subscription.dispose());
+      sizeSyncRef.current = null;
       rendererRef.current?.dispose();
       rendererRef.current = null;
       connectRef.current = () => {};
@@ -1423,13 +1377,11 @@ export function Terminal({
     if (!active) return;
     const frame = requestAnimationFrame(() => {
       if (!activeRef.current) return;
-      const renderer = rendererRef.current;
-      renderer?.fit();
-      syncLocalScrollPosition(renderer);
+      sizeSyncRef.current?.fit();
       if (!wsRef.current) connectRef.current(false);
     });
     return () => cancelAnimationFrame(frame);
-  }, [active, keepConnected, syncLocalScrollPosition, transitionState]);
+  }, [active, keepConnected]);
 
   useEffect(() => {
     if (!active || !focused) return;
