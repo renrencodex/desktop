@@ -48,6 +48,12 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import "./app.css";
+import {
+  DesktopSessionStorageError,
+  desktopSessionErrorMessage,
+  probeDesktopApiConnectivity,
+  recoverDesktopSession,
+} from "./desktop-session";
 import { bindDesktopWindowViewport } from "./desktop-window-viewport";
 import { scheduleDesktopStartup } from "./desktop-startup";
 import { resolveDesktopBuildConfig } from "./config";
@@ -143,9 +149,21 @@ const api = createApiClient({
     setRefreshToken: async (value) => {
       if (value === null) {
         tokenState.refresh = null;
-        await platform.secureStorage.remove(REFRESH_TOKEN_KEY);
+        try {
+          await platform.secureStorage.remove(REFRESH_TOKEN_KEY);
+        } catch (error) {
+          throw new DesktopSessionStorageError("Desktop secure storage removal failed", {
+            cause: error,
+          });
+        }
       } else {
-        await platform.secureStorage.set(REFRESH_TOKEN_KEY, value);
+        try {
+          await platform.secureStorage.set(REFRESH_TOKEN_KEY, value);
+        } catch (error) {
+          throw new DesktopSessionStorageError("Desktop secure storage write failed", {
+            cause: error,
+          });
+        }
         tokenState.refresh = value;
       }
     },
@@ -195,20 +213,16 @@ type SessionState =
 let restorePromise: Promise<User | null> | null = null;
 
 function restoreDesktopSession(): Promise<User | null> {
-  restorePromise ??= (async () => {
-    const refreshToken = await platform.secureStorage.get(REFRESH_TOKEN_KEY);
-    tokenState.refresh = refreshToken;
-    if (!refreshToken) return null;
-    try {
-      await api.desktopAuth.refresh();
-      return await api.auth.me();
-    } catch (error) {
-      if (isApiError(error) && (error.status === 401 || error.status === 403)) {
-        return null;
-      }
-      throw error;
-    }
-  })().finally(() => {
+  if (!config) return Promise.resolve(null);
+  restorePromise ??= recoverDesktopSession({
+    readRefreshToken: () => platform.secureStorage.get(REFRESH_TOKEN_KEY),
+    setRefreshToken: (value) => {
+      tokenState.refresh = value;
+    },
+    probeConnectivity: () => probeDesktopApiConnectivity(config.apiBaseUrl),
+    refresh: () => api.desktopAuth.refresh(),
+    readUser: () => api.auth.me(),
+  }).finally(() => {
     restorePromise = null;
   });
   return restorePromise;
@@ -253,7 +267,7 @@ function DesktopApp() {
       .catch((error: unknown) =>
         setSession({
           status: "error",
-          message: error instanceof Error ? error.message : "安全会话恢复失败",
+          message: desktopSessionErrorMessage(error),
         }),
       );
   }, []);
@@ -270,7 +284,7 @@ function DesktopApp() {
         if (!cancelled) {
           setSession({
             status: "error",
-            message: error instanceof Error ? error.message : "安全会话恢复失败",
+            message: desktopSessionErrorMessage(error),
           });
         }
       });
