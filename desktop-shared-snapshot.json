@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "policy": "desktop-public-v1",
   "source": {
-    "commit": "f27a7da7ea4a9f29a07e598dcf35326de9a0e775",
+    "commit": "a07c1fde3a0719d221f4c34ff225d7f5f2865970",
     "channel": "production"
   },
   "paths": [
@@ -20,7 +20,7 @@
   "files": {
     "apps/desktop/.env.example": "87ed11742942f030b63fa54811a3d6694da0d1a7c4cdfaf66348fa18ebefe82d",
     "apps/desktop/index.html": "eac75b77323a1569edff497db76ab5bd14bdfc176f33564dce194a25f4cf5e07",
-    "apps/desktop/package.json": "b1ef1d4c038315dcd311322a1715f0019a525c57baf83dc3b8f6de4e1b96654b",
+    "apps/desktop/package.json": "08e738c2b0082fb75c62872533ead7f6e4a3386c65abfa26fb529891c1d85f2b",
     "apps/desktop/scripts/build-windows-release.test.ts": "9d4f4a4b0257d38ccd1263719c01845bc6c2122c707b08e71f3195263c09e789",
     "apps/desktop/scripts/build-windows-release.ts": "c1c614457becd3c025f4e233ae7a047cb06a9e083ccde3b61369b89a6f6a304b",
     "apps/desktop/scripts/file-preview-retry.ts": "88b1484d3e2bc412bc3e2b5a083c89e4e15ab8fcb29f71d421ad13f1ccb03c25",
@@ -142,7 +142,7 @@
     "packages/native-client-ui/scripts/prepare-ghostty-wasm.ts": "6b77780128241095813c6e848678b1a39f9af713b0c7a51188da7bda7ae6d90d",
     "packages/native-client-ui/scripts/prepare-pdfjs-assets.ts": "7f856f059654923df978c1cd129d84b3583d4bbb06d9824c6313cbe9091629cc",
     "packages/native-client-ui/src/components/AppLayout.tsx": "cd120771d22e3d494b08bd8ce9c6893b569fd50cd5aa098a408bc53fd30f0bb3",
-    "packages/native-client-ui/src/components/ApplicationsWorkbench.tsx": "ab09c2de368ef5706ae1c56b99e9e9d8f9d5f2fee0741a18c1e00721b8eb198f",
+    "packages/native-client-ui/src/components/ApplicationsWorkbench.tsx": "3f57c12e20afc2abc1312ac1dbf0c2cc0827c24a7d4b68f2895e429cb3214988",
     "packages/native-client-ui/src/components/BrandLogo.test.tsx": "c07257327b758366695a386769f9bbda78a82b8154e676ac3e378169dbcba22d",
     "packages/native-client-ui/src/components/BrandLogo.tsx": "ca8dc941da73572c15be27b6ac108393778d48685ed6b3e6ef7dcdeefecd2840",
     "packages/native-client-ui/src/components/CliAppIcon.tsx": "5b052d38cfebc9f7ef14a2fb37c28f477b1640e74ea11eb069b1cb2b6ec2dd68",

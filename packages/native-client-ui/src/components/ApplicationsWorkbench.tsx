@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -52,6 +52,12 @@ export function ApplicationsWorkbench(props: {
 }) {
   const pane = props.pane ?? DEFAULT_APPLICATION_PANE;
   const containerRef = useRef<HTMLDivElement>(null);
+  const resizeFrameRef = useRef(0);
+  const pendingSizeRef = useRef(pane.size);
+  const stopResizeRef = useRef<(() => void) | null>(null);
+  const [draftSize, setDraftSize] = useState<{ owner: ApplicationPane; value: number } | null>(
+    null,
+  );
   const [connectionActionsHost, setConnectionActionsHost] = useState<HTMLDivElement | null>(null);
   const closingInstanceIdRef = useRef<string | null>(null);
   const previousConnectionOnlineRef = useRef<boolean | undefined>(undefined);
@@ -112,6 +118,21 @@ export function ApplicationsWorkbench(props: {
     previousConnectionOnlineRef.current = connectionOnline;
     if (reconnected) void refetchInventory();
   }, [applicationSurfaceActive, connectionOnline, refetchInventory]);
+
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(resizeFrameRef.current);
+      stopResizeRef.current?.();
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!isCompact && showConversation) return;
+    stopResizeRef.current?.();
+    cancelAnimationFrame(resizeFrameRef.current);
+    resizeFrameRef.current = 0;
+  }, [isCompact, showConversation]);
 
   const showCatalog = () => {
     props.onChange((current) => ({
@@ -345,6 +366,93 @@ export function ApplicationsWorkbench(props: {
     </div>
   );
 
+  const displayedSize = draftSize?.owner === pane ? draftSize.value : pane.size;
+  const beginResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || !event.isPrimary) return;
+    const bounds = containerRef.current?.getBoundingClientRect();
+    if (!bounds?.width) return;
+    event.preventDefault();
+    event.stopPropagation();
+    stopResizeRef.current?.();
+    cancelAnimationFrame(resizeFrameRef.current);
+    resizeFrameRef.current = 0;
+    setDraftSize(null);
+
+    const separator = event.currentTarget;
+    const pointerId = event.pointerId;
+    const initialSize = pane.size;
+    const initialClientX = event.clientX;
+    let moved = false;
+    let stopped = false;
+    pendingSizeRef.current = initialSize;
+    separator.setPointerCapture(pointerId);
+
+    const updatePendingSize = (clientX: number) => {
+      moved ||= clientX !== initialClientX;
+      pendingSizeRef.current = Math.max(
+        20,
+        Math.min(70, ((clientX - bounds.left) / bounds.width) * 100),
+      );
+      cancelAnimationFrame(resizeFrameRef.current);
+      resizeFrameRef.current = requestAnimationFrame(() => {
+        resizeFrameRef.current = 0;
+        setDraftSize({ owner: pane, value: pendingSizeRef.current });
+      });
+    };
+    function stopResize() {
+      if (stopped) return;
+      stopped = true;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("resize", onBlur);
+      separator.removeEventListener("lostpointercapture", onLostPointerCapture);
+      if (separator.hasPointerCapture(pointerId)) separator.releasePointerCapture(pointerId);
+      if (stopResizeRef.current === stopResize) stopResizeRef.current = null;
+    }
+    function cancelResize() {
+      stopResize();
+      cancelAnimationFrame(resizeFrameRef.current);
+      resizeFrameRef.current = 0;
+      setDraftSize(null);
+    }
+    function onMove(move: PointerEvent) {
+      if (move.pointerId !== pointerId) return;
+      move.preventDefault();
+      updatePendingSize(move.clientX);
+    }
+    function onUp(up: PointerEvent) {
+      if (up.pointerId !== pointerId) return;
+      if (up.clientX !== initialClientX) updatePendingSize(up.clientX);
+      const finalSize = pendingSizeRef.current;
+      stopResize();
+      cancelAnimationFrame(resizeFrameRef.current);
+      resizeFrameRef.current = 0;
+      setDraftSize(null);
+      if (moved && Math.abs(finalSize - initialSize) > 0.001) {
+        props.onChange((current) => ({ ...current, size: finalSize }));
+      }
+    }
+    function onCancel(cancel: PointerEvent) {
+      if (cancel.pointerId === pointerId) cancelResize();
+    }
+    function onLostPointerCapture(lost: PointerEvent) {
+      if (lost.pointerId === pointerId) cancelResize();
+    }
+    function onBlur() {
+      cancelResize();
+    }
+
+    stopResizeRef.current = stopResize;
+    window.addEventListener("pointermove", onMove, { passive: false });
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("resize", onBlur);
+    separator.addEventListener("lostpointercapture", onLostPointerCapture);
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       {isCompact && !isPhone && applicationViewSwitcher}
@@ -355,7 +463,7 @@ export function ApplicationsWorkbench(props: {
         <div
           className="min-h-0 min-w-0 shrink-0"
           style={{
-            width: isCompact ? "100%" : `${pane.size}%`,
+            width: isCompact ? "100%" : `${displayedSize}%`,
             display: isCompact
               ? mobileView === "applications"
                 ? undefined
@@ -380,7 +488,7 @@ export function ApplicationsWorkbench(props: {
           aria-orientation="vertical"
           aria-valuemin={20}
           aria-valuemax={70}
-          aria-valuenow={pane.size}
+          aria-valuenow={displayedSize}
           tabIndex={!isCompact && showConversation ? 0 : -1}
           className="relative z-10 -mx-px w-[3px] shrink-0 cursor-col-resize touch-none outline-none before:pointer-events-none before:absolute before:inset-y-0 before:left-1/2 before:w-[2px] before:-translate-x-1/2 before:bg-[var(--cm-border)] before:content-[''] before:opacity-40 before:transition-[width,background-color,opacity] before:duration-150 hover:before:w-[3px] hover:before:bg-[var(--cm-accent)] hover:before:opacity-100 focus-visible:before:w-[3px] focus-visible:before:bg-[var(--cm-accent)] focus-visible:before:opacity-100 active:before:w-[3px] active:before:bg-[var(--cm-accent)] active:before:opacity-100 [@media(pointer:coarse)]:-mx-[12px] [@media(pointer:coarse)]:w-[25px]"
           style={{ display: !isCompact && showConversation ? undefined : "none" }}
@@ -394,24 +502,7 @@ export function ApplicationsWorkbench(props: {
               }));
             }
           }}
-          onPointerDown={(event) => {
-            event.currentTarget.setPointerCapture(event.pointerId);
-          }}
-          onPointerMove={(event) => {
-            if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-            const bounds = containerRef.current?.getBoundingClientRect();
-            if (bounds?.width) {
-              const size = Math.max(
-                20,
-                Math.min(70, ((event.clientX - bounds.left) / bounds.width) * 100),
-              );
-              props.onChange((current) => ({ ...current, size }));
-            }
-          }}
-          onPointerUp={(event) => {
-            if (event.currentTarget.hasPointerCapture(event.pointerId))
-              event.currentTarget.releasePointerCapture(event.pointerId);
-          }}
+          onPointerDown={beginResize}
         />
         <div
           className="min-h-0 min-w-0 flex-1"
