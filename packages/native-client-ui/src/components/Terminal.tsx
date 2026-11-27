@@ -4,10 +4,12 @@ import { createPortal } from "react-dom";
 import type { ITheme } from "@xterm/xterm";
 import type {
   CliLaunchProfile,
+  TerminalOpenedReplayMetadata,
   TerminalScrollPositionState,
 } from "@cloud-machine/client-contracts";
 import {
   isRetryableTerminalError,
+  TERMINAL_REPLAY_COMPLETE,
   terminalScrollPositionStateSchema,
 } from "@cloud-machine/client-contracts";
 import {
@@ -81,9 +83,10 @@ import { TerminalScrollbar } from "./TerminalScrollbar";
 type ConnState =
   "idle" | "connecting" | "connected" | "disconnected" | "readonly" | "exited" | "error";
 
-interface ServerMessage {
+interface ServerMessage extends TerminalOpenedReplayMetadata {
   type:
     | "opened"
+    | typeof TERMINAL_REPLAY_COMPLETE
     | "output"
     | "foreground"
     | "exit"
@@ -108,6 +111,12 @@ interface ServerMessage {
   exitCode?: number | null;
   message?: string;
   processName?: string | null;
+}
+
+interface InitialReplay {
+  pendingWrites: number;
+  boundaryReceived: boolean;
+  complete: () => void;
 }
 
 const EMPTY_SCROLL_POSITION: TerminalScrollPositionState = {
@@ -985,6 +994,26 @@ export function Terminal({
               wsRef.current = ws;
               let receivedOpened = false;
               let attachmentActive = false;
+              let initialReplay: InitialReplay | null = null;
+              const finishInitialReplay = (replay: InitialReplay) => {
+                if (
+                  initialReplay !== replay ||
+                  !replay.boundaryReceived ||
+                  replay.pendingWrites !== 0
+                )
+                  return;
+                initialReplay = null;
+                replay.complete();
+              };
+              const writeInitialReplay = (replay: InitialReplay, data: string | Uint8Array) => {
+                replay.pendingWrites += 1;
+                renderer.write(data, () => {
+                  if (initialReplay !== replay || disposed || currentGeneration !== generation)
+                    return;
+                  replay.pendingWrites -= 1;
+                  finishInitialReplay(replay);
+                });
+              };
               ws.onmessage = (event: MessageEvent<string>) => {
                 if (currentGeneration !== generation) return;
                 let message: ServerMessage;
@@ -1019,17 +1048,26 @@ export function Terminal({
                       setRemoteInScrollback(false);
                     }
                     awaitingScrollRequestRef.current = null;
+                    const boundedReplay = message.replayCompleteFollows === true;
+                    if (boundedReplay) {
+                      // Hide synchronously before reset/write: React state alone would leave the
+                      // Ghostty canvas visible until the event batch commits.
+                      container.style.visibility = "hidden";
+                      setContentReady(false);
+                    }
                     renderer.reset();
                     setShowScrollToBottom(false);
                     resumableRef.current = message.resumable !== false;
                     setResumable(resumableRef.current);
-                    renderer.write(message.snapshot ? base64ToBytes(message.snapshot) : "", () => {
+                    const completeOpened = () => {
                       // xterm parses asynchronously; late callbacks must not revive a closed
                       // connection, an exited Shell, or an attachment taken over meanwhile.
                       if (disposed || currentGeneration !== generation) return;
                       clearConnectionDeadline();
+                      renderer.scrollToBottom();
                       syncLocalScrollPosition(renderer, message.state === "exited");
                       connecting = false;
+                      container.style.visibility = "visible";
                       setContentReady(true);
                       recordClientPerformance(
                         CLIENT_PERFORMANCE_MEASURES.terminalInteractive,
@@ -1048,14 +1086,35 @@ export function Terminal({
                         transitionState("connected");
                         sizeSync.opened();
                       }
-                    });
+                    };
+                    const snapshot = message.snapshot ? base64ToBytes(message.snapshot) : "";
+                    if (boundedReplay) {
+                      const replay: InitialReplay = {
+                        pendingWrites: 0,
+                        boundaryReceived: false,
+                        complete: completeOpened,
+                      };
+                      initialReplay = replay;
+                      writeInitialReplay(replay, snapshot);
+                    } else {
+                      renderer.write(snapshot, completeOpened);
+                    }
+                    break;
+                  }
+                  case TERMINAL_REPLAY_COMPLETE: {
+                    const replay = initialReplay;
+                    if (!replay) break;
+                    replay.boundaryReceived = true;
+                    finishInitialReplay(replay);
                     break;
                   }
                   case "output":
-                    if (receivedOpened && attachmentActive && message.data)
-                      renderer.write(base64ToBytes(message.data), () =>
-                        syncLocalScrollPosition(renderer),
-                      );
+                    if (receivedOpened && attachmentActive && message.data) {
+                      const data = base64ToBytes(message.data);
+                      const replay = initialReplay;
+                      if (replay && !replay.boundaryReceived) writeInitialReplay(replay, data);
+                      else renderer.write(data, () => syncLocalScrollPosition(renderer));
+                    }
                     break;
                   case "foreground":
                     if (attachmentActive) onForegroundRef.current?.(message.processName ?? null);

@@ -12,6 +12,17 @@ export const terminalChannelErrorSchema = z.object({
 });
 export type TerminalChannelError = z.infer<typeof terminalChannelErrorSchema>;
 
+/** `opened` metadata used during a rolling upgrade to bound the initial replay. */
+export interface TerminalOpenedReplayMetadata {
+  replayCompleteFollows?: boolean;
+}
+
+export const TERMINAL_REPLAY_COMPLETE = "replay_complete";
+export const terminalReplayCompleteMessageSchema = z.object({
+  type: z.literal(TERMINAL_REPLAY_COMPLETE),
+});
+export type TerminalReplayCompleteMessage = z.infer<typeof terminalReplayCompleteMessageSchema>;
+
 /** Unknown/business errors must not create automatic attach/restart loops. */
 export function isRetryableTerminalError(value: unknown): boolean {
   const parsed = terminalChannelErrorSchema.safeParse(value);

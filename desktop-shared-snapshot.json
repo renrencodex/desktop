@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "policy": "desktop-public-v1",
   "source": {
-    "commit": "d97696b64bdf5cfddb66d00a8b604e0635de5f7a",
+    "commit": "f65ccd007050f3baa1da9df2f706f1104f272b1b",
     "channel": "production"
   },
   "paths": [
@@ -20,7 +20,7 @@
   "files": {
     "apps/desktop/.env.example": "87ed11742942f030b63fa54811a3d6694da0d1a7c4cdfaf66348fa18ebefe82d",
     "apps/desktop/index.html": "eac75b77323a1569edff497db76ab5bd14bdfc176f33564dce194a25f4cf5e07",
-    "apps/desktop/package.json": "094e7cbc3e0db3bdf520536eb7affa692cc4206bdb94bb1cbcbf7f9e97db339b",
+    "apps/desktop/package.json": "a907fb26df2f8964bce207022bac346637ab242cf8e0f425bfa81be25a67cee3",
     "apps/desktop/scripts/build-windows-release.test.ts": "9d4f4a4b0257d38ccd1263719c01845bc6c2122c707b08e71f3195263c09e789",
     "apps/desktop/scripts/build-windows-release.ts": "c1c614457becd3c025f4e233ae7a047cb06a9e083ccde3b61369b89a6f6a304b",
     "apps/desktop/scripts/file-preview-retry.ts": "88b1484d3e2bc412bc3e2b5a083c89e4e15ab8fcb29f71d421ad13f1ccb03c25",
@@ -122,7 +122,7 @@
     "packages/client-contracts/src/rescue.ts": "50d24ab6f97ac627a602be4077125f55ab63dbd1759a8f060a91d0941f607b72",
     "packages/client-contracts/src/rpc-errors.ts": "7eb8c4b270b915621541a06e6a6714931bed8a28a56e92fb09643157d0ee3caa",
     "packages/client-contracts/src/snapshots.ts": "d07f2a852b5b18381f1565644c790d77446a73fa80a24134aa410079b841b61d",
-    "packages/client-contracts/src/terminal-channel.ts": "f6621a0e34f5121c8a1af7f6b14a7be137d536446ca349e5a034076082d7ba59",
+    "packages/client-contracts/src/terminal-channel.ts": "05d295c0966eeded9bb43e6923cbe30da8fa9b5a5170ad2d371b9f21b5ec2413",
     "packages/client-contracts/src/workbench.ts": "d62049d4b52e1f2fc9ad3ae2a3d41c02925eaeb2614835adc46b56038fbc5b97",
     "packages/client-contracts/src/workspace-diff.ts": "b5d8fa4ce2765d53af24105746ea95958fa7d064d9c342ab90570cb1fe8de438",
     "packages/client-contracts/src/workspace-paths.ts": "a8bec7fd029dcbbf60aab808ebde00bd0f7e7ef084d749f36a315cc425e9d11a",
@@ -175,7 +175,7 @@
     "packages/native-client-ui/src/components/SidebarMachineMetrics.tsx": "85d39de60485dc28b8c27967d1a8a0e84bb17bcd65839ea92b56ccafff7f0edd",
     "packages/native-client-ui/src/components/SnapshotsPanel.tsx": "6a0288ace665a54a57356e59833ed4b3ca767044dec146e0e48a6f3fbab587bf",
     "packages/native-client-ui/src/components/StatusBadge.tsx": "8a4873e6ff38c2bcdd115ce2f71a06893dd348fefa05fae5718efa524ac1f265",
-    "packages/native-client-ui/src/components/Terminal.tsx": "827a1e87ea4f96797356a6ecb92f116b39beedbd0b4b5563aceb7bbb29ecf17a",
+    "packages/native-client-ui/src/components/Terminal.tsx": "c79a3da7f6390f6c4539811507393d105e3b11072366a726a3dfb554f866c888",
     "packages/native-client-ui/src/components/TerminalScrollbar.tsx": "1821628d723337ecc9233e1b41743926c12e69eaae9c61f686348cf72f71eba4",
     "packages/native-client-ui/src/components/TerminalTouchClipboardUI.tsx": "f2b199794ce022c347661f3415d07b20e1b52129303adc7d0273752f2ccb3524",
     "packages/native-client-ui/src/components/TerminalTouchToolbar.tsx": "39e535d77c7dc5fc5d80e2acedb190fdc7b075cb174eb44f49162b6cd9a9f721",
