@@ -11,6 +11,8 @@ export interface LatestSaveQueue<T> {
   schedule(value: T): void;
   retry(): void;
   flush(): void;
+  discardPending(): void;
+  runExclusive<TResult>(action: () => Promise<TResult>): Promise<TResult>;
   dispose(): void;
 }
 
@@ -25,13 +27,15 @@ export function createLatestSaveQueue<TInput, TOutput = TInput>(options: {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let blockedByError = false;
   let disposed = false;
+  let exclusivePending = 0;
+  let exclusiveTail: Promise<void> = Promise.resolve();
 
   const setStatus = (status: SaveQueueStatus) => {
     if (!disposed) options.onStatus(status);
   };
 
   const drain = () => {
-    if (active || pending === undefined || blockedByError) return;
+    if (active || exclusivePending > 0 || pending === undefined || blockedByError) return;
     const value = pending;
     pending = undefined;
     let continueWithNewerValue = true;
@@ -84,6 +88,30 @@ export function createLatestSaveQueue<TInput, TOutput = TInput>(options: {
       clearTimer();
       blockedByError = false;
       drain();
+    },
+    discardPending() {
+      clearTimer();
+      pending = undefined;
+      blockedByError = false;
+      setStatus(active ? "saving" : "saved");
+    },
+    runExclusive<TResult>(action: () => Promise<TResult>) {
+      exclusivePending += 1;
+      const run = exclusiveTail.then(async () => {
+        clearTimer();
+        while (active) await active;
+        try {
+          return await action();
+        } finally {
+          exclusivePending -= 1;
+          if (exclusivePending === 0) drain();
+        }
+      });
+      exclusiveTail = run.then(
+        () => undefined,
+        () => undefined,
+      );
+      return run;
     },
     dispose() {
       disposed = true;

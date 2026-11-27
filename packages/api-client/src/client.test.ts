@@ -496,6 +496,7 @@ describe("请求构造", () => {
     await client.workspaces.delete("w/1", { deleteFiles: true });
     await client.workbench.getLayout("w/1");
     await client.workbench.saveLayout("w/1", { layout, expectedRevision: 3 });
+    await client.workbench.closeTerminalTab("w/1", "tab_1");
 
     expect(calls.map((call) => [call.method, call.url])).toEqual([
       ["POST", "http://api.test/api/v1/machines/m%2F1/workspaces"],
@@ -506,6 +507,7 @@ describe("请求构造", () => {
       ["DELETE", "http://api.test/api/v1/workspaces/w%2F1?deleteFiles=true"],
       ["GET", "http://api.test/api/v1/workspaces/w%2F1/workbench-layout"],
       ["PUT", "http://api.test/api/v1/workspaces/w%2F1/workbench-layout"],
+      ["DELETE", "http://api.test/api/v1/workspaces/w%2F1/workbench-layout/terminal-tabs/tab_1"],
     ]);
     expect(calls[0]!.body).toEqual({ name: "Frontend", path: "/workspace/app", mode: "create" });
     expect(calls[7]!.body).toEqual({ layout, expectedRevision: 3 });

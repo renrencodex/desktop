@@ -12,6 +12,7 @@ export * from "./workspace-paths";
 export * from "./workbench";
 export * from "./network-qos";
 export * from "./terminal-channel";
+export * from "./rpc-errors";
 export * from "./cli-store";
 export * from "./referral-bank";
 export * from "./referral-domain";

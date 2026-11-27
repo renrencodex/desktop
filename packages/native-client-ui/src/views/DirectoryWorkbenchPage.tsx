@@ -40,7 +40,11 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { focusTabAt, tablistArrowTarget } from "../lib/tablist-navigation";
 import { api } from "../lib/api";
 import { createLatestSaveQueue } from "../lib/latest-save-queue";
-import { rebaseWorkbenchLayout, workbenchLayoutsEqual } from "../lib/workbench-layout-sync";
+import {
+  rebaseWorkbenchLayout,
+  rebaseWorkbenchLayoutAfterTerminalClose,
+  workbenchLayoutsEqual,
+} from "../lib/workbench-layout-sync";
 import { isNotFoundError, userErrorMessage } from "../lib/user-error";
 import { useResponsiveViewport, useVirtualKeyboardOpen } from "../lib/responsive";
 import {
@@ -63,7 +67,6 @@ import {
   reorderWorkbenchTab,
   resizeTerminalSplit,
   splitTerminalPane,
-  terminalPaneIds,
   updateBrowserUrl,
   updateExplorerTreeLayout,
   updateTerminalTitle,
@@ -254,6 +257,8 @@ export function DirectoryWorkbenchPage(props: {
   const { isPhone, isCompact, isResolved: viewportResolved } = useResponsiveViewport();
   const [terminalProcessNames, setTerminalProcessNames] = useState<Record<string, string>>({});
   const [terminalOperationError, setTerminalOperationError] = useState<string | null>(null);
+  const closingTerminalTabsRef = useRef(new Set<string>());
+  const [closingTerminalTabs, setClosingTerminalTabs] = useState<ReadonlySet<string>>(new Set());
   const [syncState, setSyncState] = useState<LayoutSyncState>("idle");
   const syncStateRef = useRef(syncState);
   const layoutRefreshInFlightRef = useRef(false);
@@ -425,19 +430,51 @@ export function DirectoryWorkbenchPage(props: {
     if (visible && !wasVisible) void refreshLayoutFromServer();
   }, [isPhone, refreshLayoutFromServer, viewportResolved, visible]);
 
-  const destroyTerminalTab = useCallback(
+  const closeTerminalTab = useCallback(
     async (tab: Extract<WorkbenchTab, { type: "terminal" }>) => {
-      await Promise.all(
-        terminalPaneIds(tab.root).map((paneId) =>
-          destroyTerminalSession(machineId, {
+      if (closingTerminalTabsRef.current.has(tab.id)) return;
+      closingTerminalTabsRef.current.add(tab.id);
+      setClosingTerminalTabs(new Set(closingTerminalTabsRef.current));
+      setTerminalOperationError(null);
+      try {
+        await saveQueue.runExclusive(async () => {
+          if (useAuthStore.getState().user?.id !== ownerId) {
+            throw new Error("Workspace account changed");
+          }
+          const base = queryClient.getQueryData<WorkbenchLayoutState>([
+            "workbench-layout",
             workspaceId,
-            terminalTabId: tab.id,
-            paneId,
-          }),
-        ),
-      );
+          ]);
+          const localLayout = layoutStateRef.current;
+          if (!base || !localLayout) throw new Error("Workspace layout is unavailable");
+          const saved = await api.workbench.closeTerminalTab(workspaceId, tab.id);
+          if (useAuthStore.getState().user?.id !== ownerId) {
+            throw new Error("Workspace account changed");
+          }
+          const current = layoutStateRef.current ?? localLayout;
+          const next = rebaseWorkbenchLayoutAfterTerminalClose(
+            base.layout,
+            current,
+            saved.layout,
+            tab.id,
+          );
+          saveQueue.discardPending();
+          queryClient.setQueryData<WorkbenchLayoutState>(["workbench-layout", workspaceId], saved);
+          layoutStateRef.current = next;
+          setLayoutState(next);
+          if (!workbenchLayoutsEqual(next, saved.layout)) {
+            syncStateRef.current = "saving";
+            saveQueue.schedule({ base: saved, layout: next });
+          }
+        });
+      } catch (error) {
+        setTerminalOperationError(userErrorMessage(error, "关闭终端失败"));
+      } finally {
+        closingTerminalTabsRef.current.delete(tab.id);
+        setClosingTerminalTabs(new Set(closingTerminalTabsRef.current));
+      }
     },
-    [machineId, workspaceId],
+    [ownerId, queryClient, saveQueue, workspaceId],
   );
   useEffect(() => {
     if (!visible) return;
@@ -490,6 +527,7 @@ export function DirectoryWorkbenchPage(props: {
     workspaceQuery.isLoading ||
     layoutQuery.isLoading ||
     filesBusy ||
+    closingTerminalTabs.size > 0 ||
     syncState === "saving";
   useEffect(() => {
     report?.(`${machineId}:${workspaceId}`, {
@@ -538,11 +576,7 @@ export function DirectoryWorkbenchPage(props: {
           return;
         }
         if (tab.type === "terminal") {
-          void destroyTerminalTab(tab)
-            .then(() => setLayoutImmediate((current) => closeWorkbenchTab(current, tab.id)))
-            .catch((error: unknown) =>
-              setTerminalOperationError(userErrorMessage(error, "关闭终端失败")),
-            );
+          void closeTerminalTab(tab);
         } else {
           setLayout((current) => closeWorkbenchTab(current, tab.id));
         }
@@ -557,7 +591,7 @@ export function DirectoryWorkbenchPage(props: {
     layout.workspacePane.tabs,
     setLayout,
     setLayoutImmediate,
-    destroyTerminalTab,
+    closeTerminalTab,
   ]);
 
   if (!machineQuery.data || !workspaceQuery.data || !layoutQuery.data) {
@@ -631,12 +665,8 @@ export function DirectoryWorkbenchPage(props: {
       return;
     }
     if (tab.type === "terminal") {
-      try {
-        await destroyTerminalTab(tab);
-      } catch (error) {
-        setTerminalOperationError(userErrorMessage(error, "关闭终端失败"));
-        return;
-      }
+      await closeTerminalTab(tab);
+      return;
     }
     setTerminalOperationError(null);
     setLayoutImmediate((current) => closeWorkbenchTab(current, tab.id));
@@ -773,6 +803,7 @@ export function DirectoryWorkbenchPage(props: {
                           )
                         }
                         renaming={tab.type === "terminal" && renamingTerminalId === tab.id}
+                        closing={tab.type === "terminal" && closingTerminalTabs.has(tab.id)}
                         onActivate={() => setLayout((current) => activateTab(current, tab.id))}
                         onClose={() => void closeTab(tab)}
                         onRenameStart={() =>
@@ -1231,6 +1262,7 @@ function WorkbenchTabButton(props: {
   active: boolean;
   dirty: boolean;
   renaming: boolean;
+  closing: boolean;
   onActivate: () => void;
   onClose: () => void;
   onRenameStart: () => void;
@@ -1253,7 +1285,7 @@ function WorkbenchTabButton(props: {
       role="tab"
       tabIndex={props.active ? 0 : -1}
       aria-selected={props.active}
-      draggable={!props.renaming}
+      draggable={!props.renaming && !props.closing}
       onClick={props.onActivate}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -1271,7 +1303,12 @@ function WorkbenchTabButton(props: {
         const sourceId = event.dataTransfer.getData("application/x-renrencodex-workbench-tab");
         if (sourceId && sourceId !== tab.id) props.onDrop(sourceId);
       }}
-      onAuxClick={(event) => event.button === 1 && props.onClose()}
+      aria-busy={props.closing || undefined}
+      onAuxClick={(event) => {
+        if (event.button !== 1 || props.closing) return;
+        event.preventDefault();
+        props.onClose();
+      }}
       className={`group max-w-52 shrink-0 ${props.active ? "cm-button-primary" : "cm-button"}`}
       title={props.label}
     >
@@ -1303,11 +1340,12 @@ function WorkbenchTabButton(props: {
       <button
         type="button"
         aria-label={`关闭 ${props.label}`}
+        disabled={props.closing}
         onClick={(event) => {
           event.stopPropagation();
           props.onClose();
         }}
-        className={`rounded p-0.5 opacity-60 hover:opacity-100 group-hover:opacity-100 ${
+        className={`rounded p-0.5 opacity-60 hover:opacity-100 group-hover:opacity-100 disabled:cursor-wait disabled:opacity-30 ${
           props.active ? "hover:bg-black/20" : "hover:bg-zinc-700"
         }`}
       >

@@ -1,6 +1,8 @@
 import type { TerminalLayoutNode, WorkbenchLayout, WorkbenchTab } from "@cloud-machine/api-client";
 import { rebaseApplicationPane } from "@cloud-machine/workspace-ui";
 
+import { closeWorkbenchTab } from "./workbench-tabs";
+
 function sameValue(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
@@ -122,6 +124,16 @@ export function rebaseWorkbenchLayout(
         }
       : {}),
   };
+}
+
+/** A server-acknowledged terminal close is authoritative even if the local merge base is stale. */
+export function rebaseWorkbenchLayoutAfterTerminalClose(
+  base: WorkbenchLayout,
+  local: WorkbenchLayout,
+  remote: WorkbenchLayout,
+  terminalTabId: string,
+): WorkbenchLayout {
+  return closeWorkbenchTab(rebaseWorkbenchLayout(base, local, remote), terminalTabId);
 }
 
 export function workbenchLayoutsEqual(left: WorkbenchLayout, right: WorkbenchLayout): boolean {

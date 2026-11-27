@@ -847,6 +847,11 @@ export function createApiClient(options: ApiClientOptions) {
           `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/workbench-layout`,
           { method: "PUT", body: input },
         ),
+      closeTerminalTab: (workspaceId: string, terminalTabId: string) =>
+        request<WorkbenchLayoutState>(
+          `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/workbench-layout/terminal-tabs/${encodeURIComponent(terminalTabId)}`,
+          { method: "DELETE" },
+        ),
     },
     plans: {
       list: () => request<Plan[]>("/api/v1/plans"),
