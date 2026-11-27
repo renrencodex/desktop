@@ -1,4 +1,5 @@
 import type { ITheme as XtermTheme, Terminal as XtermTerminal } from "@xterm/xterm";
+import { bindGhosttyCanvasPaint } from "@cloud-machine/workspace-ui/terminal-canvas-paint";
 import {
   installGhosttyBackgroundPixelAlignment,
   installGhosttySelectionAutoScrollBoundary,
@@ -25,7 +26,6 @@ import { attachGhosttyMouseReporting } from "./terminal-mouse";
 import { bindTerminalNativeInput } from "./terminal-native-input";
 import { bindNormalizedTerminalPaste, normalizeTerminalPaste } from "./terminal-paste";
 import { anchoredViewportY } from "./terminal-scroll";
-import { suppressGhosttyScrollbar } from "./terminal-scrollbar";
 import { bindTerminalSoftKeyboard } from "./terminal-soft-keyboard";
 import { attachTerminalTouchScroll } from "./terminal-touch";
 import {
@@ -115,6 +115,7 @@ export interface TerminalKeyboardHost {
 
 interface TerminalRendererOptions {
   visible?: boolean;
+  isPhoneApplication?: () => boolean;
   /** Desktop can suspend geometry while its native window is minimized/restoring. */
   layoutGate?: {
     isSuspended(): boolean;
@@ -301,15 +302,16 @@ async function createBackendRenderer(
     let softKeyboard: ReturnType<typeof bindTerminalSoftKeyboard> | null = null;
     let stopBackgroundPixelAlignment: (() => void) | undefined;
     let stopSelectionAutoScrollBoundary: (() => void) | undefined;
-    let stopScrollbarSuppression: (() => void) | undefined;
+    let canvasPaint: ReturnType<typeof bindGhosttyCanvasPaint> | undefined;
     try {
       term.open(container);
       stopSelectionAutoScrollBoundary = installGhosttySelectionAutoScrollBoundary(term);
       stopBackgroundPixelAlignment = installGhosttyBackgroundPixelAlignment(term.renderer);
-      stopScrollbarSuppression = suppressGhosttyScrollbar(
+      canvasPaint = bindGhosttyCanvasPaint(
         term,
         container,
         () => renderVisible && !container.ownerDocument.hidden,
+        options.isPhoneApplication,
       );
       concealTerminalNativeCaret(container);
       setCursorActive(false);
@@ -318,7 +320,7 @@ async function createBackendRenderer(
     } catch (error) {
       stopSelectionAutoScrollBoundary?.();
       stopBackgroundPixelAlignment?.();
-      stopScrollbarSuppression?.();
+      canvasPaint?.dispose();
       softKeyboard?.dispose();
       nativeInputFocus.dispose();
       focus.dispose();
@@ -515,11 +517,15 @@ async function createBackendRenderer(
         const filtered = osc52.push(data);
         // Ghostty 0.4.0's WASM allocator rejects zero-length buffers. An empty
         // snapshot is still a completed write, just without parser work.
-        if (filtered.length > 0) write(filtered);
+        if (filtered.length > 0) {
+          write(filtered);
+          canvasPaint.outputParsed(filtered);
+        }
         inputPosition.schedule();
         onParsed?.();
       },
       reset: () => {
+        canvasPaint.reset();
         inputPosition.cancel();
         osc52.reset();
         touchSelection.clear();
@@ -694,7 +700,7 @@ async function createBackendRenderer(
         focus.dispose();
         stopSelectionAutoScrollBoundary?.();
         stopBackgroundPixelAlignment?.();
-        stopScrollbarSuppression?.();
+        canvasPaint.dispose();
         term.dispose();
       },
     };

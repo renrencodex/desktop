@@ -629,6 +629,7 @@ export function Terminal({
     if (!container) return;
     const initialFocus = container.ownerDocument.activeElement;
     const phoneMedia = container.ownerDocument.defaultView?.matchMedia?.(PHONE_MEDIA_QUERY);
+    const touchMedia = container.ownerDocument.defaultView?.matchMedia?.(COARSE_POINTER_QUERY);
     let fontSize = getMediaQuerySnapshot(PHONE_MEDIA_QUERY)
       ? TERMINAL_FONT_SIZE.phone
       : TERMINAL_FONT_SIZE.default;
@@ -819,6 +820,10 @@ export function Terminal({
       {
         fontFamily: TERMINAL_FONT_FALLBACK,
         visible: activeRef.current,
+        isPhoneApplication: () =>
+          launchProfileRef.current?.mode === "run" &&
+          phoneMedia?.matches === true &&
+          touchMedia?.matches === true,
         layoutGate: desktopLayoutGate,
         fontSize,
         // ghostty-web 0.4.0 在创建时把调色板固化进 WASM 单元格，setTheme 无法给既有
