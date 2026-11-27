@@ -70,6 +70,7 @@ import {
   readMachineDetailCache,
 } from "../lib/machine-detail-cache";
 import { machineMetricsCache } from "../lib/machine-metrics-cache";
+import { applyAcceptedMachineDeletion } from "../lib/machine-list";
 import { canRebuild } from "../lib/rebuild-utils";
 import { isNotFoundError, userErrorMessage } from "../lib/user-error";
 import { focusTabAt, tablistArrowTarget } from "../lib/tablist-navigation";
@@ -378,10 +379,13 @@ export function MachineDetailPage({ machineId }: { machineId: string }) {
       if (!deletionQuote) throw new Error("删除报价尚未生成");
       return api.machines.delete(machineId, deletionQuote.quoteId);
     },
-    onSuccess: () => {
+    onSuccess: (deletedMachine) => {
       setConfirmDelete(false);
       machineMetricsCache.invalidate(accountId ?? null, machineId);
       setActionError(null);
+      queryClient.setQueryData<Machine[]>(["machines"], (current) =>
+        applyAcceptedMachineDeletion(current, deletedMachine),
+      );
       toastSuccess(
         deletionQuote && deletionQuote.totalRefundCents > 0
           ? `电脑删除任务已提交，¥${(deletionQuote.totalRefundCents / 100).toFixed(2)} 已退至账户余额`

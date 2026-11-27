@@ -34,6 +34,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 
 import { api } from "../lib/api";
 import { lifecycleLabel, regionLabel } from "../lib/display-labels";
+import { partitionMachineList } from "../lib/machine-list";
 import { useUnsavedNavigationGuard } from "../lib/navigation-guard";
 import {
   preloadDirectoryWorkbench,
@@ -69,6 +70,7 @@ import { toastError, toastSuccess } from "../stores/toast";
 import { CommandPalette, type CommandPaletteItem } from "./CommandPalette";
 import { BrandLogo } from "./BrandLogo";
 import { ComputeResourcesIcon } from "./ComputeResourcesIcon";
+import { MachineDeletionNotice } from "./MachineDeletionNotice";
 import { MobileTitlebarPortalProvider, MobileTitlebarPortalTarget } from "./MobileTitlebarPortal";
 import { NotificationCenter } from "./NotificationCenter";
 import { ThemeMenu } from "./ThemeMenu";
@@ -322,6 +324,7 @@ function Shell({ children }: { children: ReactNode }) {
     enabled: !settingsCenter,
     refetchInterval: settingsCenter ? false : 5000,
   });
+  const { visibleMachines, deletingMachines } = partitionMachineList(machinesQuery.data ?? []);
   const machineId = /^\/machines\/([^/]+)/.exec(pathname)?.[1];
   const currentMachine = machinesQuery.data?.find((machine) => machine.id === machineId) ?? null;
   const titleAccountId = useAuthStore((state) => state.user?.id);
@@ -587,7 +590,8 @@ function Shell({ children }: { children: ReactNode }) {
           desktopSidebar={
             <aside className="cm-sidebar-surface flex h-full min-w-0 flex-col">
               <MachineExplorer
-                machines={machinesQuery.data ?? []}
+                machines={visibleMachines}
+                deletingMachineCount={deletingMachines.length}
                 metricsActive={!settingsCenter && sidebarOpen}
                 pending={machinesQuery.isPending}
                 error={machinesQuery.isError}
@@ -599,7 +603,8 @@ function Shell({ children }: { children: ReactNode }) {
           }
           mobileSidebar={
             <MachineExplorer
-              machines={machinesQuery.data ?? []}
+              machines={visibleMachines}
+              deletingMachineCount={deletingMachines.length}
               metricsActive={!settingsCenter && sidebarOpen}
               pending={machinesQuery.isPending}
               error={machinesQuery.isError}
@@ -640,6 +645,7 @@ function Shell({ children }: { children: ReactNode }) {
 
 function MachineExplorer(props: {
   machines: Machine[];
+  deletingMachineCount: number;
   metricsActive: boolean;
   pending: boolean;
   error: boolean;
@@ -691,10 +697,17 @@ function MachineExplorer(props: {
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-1.5">
+        {!props.pending && !props.error ? (
+          <MachineDeletionNotice count={props.deletingMachineCount} compact />
+        ) : null}
         {props.pending ? null : props.error ? (
           <p className="px-3 py-2 text-xs text-red-400">电脑列表加载失败</p>
         ) : props.machines.length === 0 ? (
-          <p className="px-3 py-3 text-xs leading-5 text-zinc-500">还没有电脑，点击右上角 + 创建</p>
+          props.deletingMachineCount > 0 ? null : (
+            <p className="px-3 py-3 text-xs leading-5 text-zinc-500">
+              还没有电脑，点击右上角 + 创建
+            </p>
+          )
         ) : (
           props.machines.map((machine) => (
             <MachineTreeItem

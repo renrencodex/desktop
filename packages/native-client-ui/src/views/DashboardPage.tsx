@@ -10,8 +10,10 @@ import { useRouter } from "../host";
 
 import { ConnectionBadge, LifecycleBadge, PowerBadge } from "../components/StatusBadge";
 import { ComputeResourcesIcon } from "../components/ComputeResourcesIcon";
+import { MachineDeletionNotice } from "../components/MachineDeletionNotice";
 import { api } from "../lib/api";
 import { planLabel, regionLabel } from "../lib/display-labels";
+import { partitionMachineList } from "../lib/machine-list";
 import { userErrorMessage } from "../lib/user-error";
 
 export function DashboardPage() {
@@ -27,7 +29,8 @@ export function DashboardPage() {
     queryFn: () => api.account.getTrial(),
   });
   const planById = new Map<string, Plan>((plansQuery.data ?? []).map((plan) => [plan.id, plan]));
-  const machines = machinesQuery.data ?? [];
+  const allMachines = machinesQuery.data ?? [];
+  const { visibleMachines: machines, deletingMachines } = partitionMachineList(allMachines);
   const running = machines.filter(isMachineRuntimeAvailable).length;
   const allocatedMemoryGb = machines.reduce((sum, machine) => sum + machine.memoryMb, 0) / 1024;
   const allocatedDiskGb = machines.reduce((sum, machine) => sum + machine.diskGb, 0);
@@ -73,14 +76,19 @@ export function DashboardPage() {
             </Link>
           </section>
         )}
+        {!machinesQuery.isPending && !machinesQuery.isError && deletingMachines.length > 0 ? (
+          <div className="mx-auto mb-4 max-w-6xl">
+            <MachineDeletionNotice count={deletingMachines.length} />
+          </div>
+        ) : null}
         {machinesQuery.isPending ? null : machinesQuery.isError ? (
           <WorkspaceMessage
             error
             label={userErrorMessage(machinesQuery.error, "加载电脑列表失败，请稍后重试")}
           />
-        ) : machines.length === 0 ? (
+        ) : allMachines.length === 0 ? (
           <EmptyWorkspace onCreate={openNewMachinePage} onPrefetch={prefetchNewMachinePage} />
-        ) : (
+        ) : machines.length === 0 ? null : (
           <div className="mx-auto max-w-6xl space-y-4">
             <section className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
               <Summary
