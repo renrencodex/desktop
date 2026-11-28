@@ -833,6 +833,12 @@ export function Terminal({
           launchProfileRef.current?.mode === "run" &&
           phoneMedia?.matches === true &&
           touchMedia?.matches === true,
+        isLiveCursorApplication: () =>
+          launchProfileRef.current?.appId === "cursor" &&
+          launchProfileRef.current.mode === "run" &&
+          stateRef.current === "connected" &&
+          !remoteScrollPositionRef.current.inScrollback &&
+          awaitingScrollRequestRef.current === null,
         layoutGate: desktopLayoutGate,
         fontSize,
         // ghostty-web 0.4.0 在创建时把调色板固化进 WASM 单元格，setTheme 无法给既有

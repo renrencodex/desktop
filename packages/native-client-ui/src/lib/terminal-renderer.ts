@@ -116,6 +116,7 @@ export interface TerminalKeyboardHost {
 interface TerminalRendererOptions {
   visible?: boolean;
   isPhoneApplication?: () => boolean;
+  isLiveCursorApplication?: () => boolean;
   /** Desktop can suspend geometry while its native window is minimized/restoring. */
   layoutGate?: {
     isSuspended(): boolean;
@@ -307,12 +308,11 @@ async function createBackendRenderer(
       term.open(container);
       stopSelectionAutoScrollBoundary = installGhosttySelectionAutoScrollBoundary(term);
       stopBackgroundPixelAlignment = installGhosttyBackgroundPixelAlignment(term.renderer);
-      canvasPaint = bindGhosttyCanvasPaint(
-        term,
-        container,
-        () => renderVisible && !container.ownerDocument.hidden,
-        options.isPhoneApplication,
-      );
+      canvasPaint = bindGhosttyCanvasPaint(term, container, {
+        isVisible: () => renderVisible && !container.ownerDocument.hidden,
+        isPhoneApplication: options.isPhoneApplication,
+        isLiveCursorApplication: options.isLiveCursorApplication,
+      });
       concealTerminalNativeCaret(container);
       setCursorActive(false);
       // open() 之后宿主才是 contenteditable、textarea 才存在。
@@ -558,7 +558,10 @@ async function createBackendRenderer(
       setVisible: (value) => {
         renderVisible = value;
         inputPosition.setVisible(value);
-        if (!value) touch.cancel();
+        if (!value) {
+          canvasPaint.cancelRmuxRepaint();
+          touch.cancel();
+        }
         // fit() runs before visibility is enabled, so its scale repair is skipped.
         // Restore any context state lost in the background before the first paint.
         else if (!repairCanvasScale() && term.renderer && term.wasmTerm)

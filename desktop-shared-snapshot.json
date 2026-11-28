@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "policy": "desktop-public-v1",
   "source": {
-    "commit": "f65ccd007050f3baa1da9df2f706f1104f272b1b",
+    "commit": "0be28b706fe1b420fe6da630fa8700a445c62cab",
     "channel": "production"
   },
   "paths": [
@@ -20,7 +20,7 @@
   "files": {
     "apps/desktop/.env.example": "87ed11742942f030b63fa54811a3d6694da0d1a7c4cdfaf66348fa18ebefe82d",
     "apps/desktop/index.html": "eac75b77323a1569edff497db76ab5bd14bdfc176f33564dce194a25f4cf5e07",
-    "apps/desktop/package.json": "a907fb26df2f8964bce207022bac346637ab242cf8e0f425bfa81be25a67cee3",
+    "apps/desktop/package.json": "598af41d61182db18f72341a36d4e9e22c80292ee21d038c4f479c1c937748f1",
     "apps/desktop/scripts/build-windows-release.test.ts": "9d4f4a4b0257d38ccd1263719c01845bc6c2122c707b08e71f3195263c09e789",
     "apps/desktop/scripts/build-windows-release.ts": "c1c614457becd3c025f4e233ae7a047cb06a9e083ccde3b61369b89a6f6a304b",
     "apps/desktop/scripts/file-preview-retry.ts": "88b1484d3e2bc412bc3e2b5a083c89e4e15ab8fcb29f71d421ad13f1ccb03c25",
@@ -175,7 +175,7 @@
     "packages/native-client-ui/src/components/SidebarMachineMetrics.tsx": "85d39de60485dc28b8c27967d1a8a0e84bb17bcd65839ea92b56ccafff7f0edd",
     "packages/native-client-ui/src/components/SnapshotsPanel.tsx": "6a0288ace665a54a57356e59833ed4b3ca767044dec146e0e48a6f3fbab587bf",
     "packages/native-client-ui/src/components/StatusBadge.tsx": "8a4873e6ff38c2bcdd115ce2f71a06893dd348fefa05fae5718efa524ac1f265",
-    "packages/native-client-ui/src/components/Terminal.tsx": "c79a3da7f6390f6c4539811507393d105e3b11072366a726a3dfb554f866c888",
+    "packages/native-client-ui/src/components/Terminal.tsx": "ae077c2e514444d35094270e39de64061eeb563cf4ad9b8cb9ce745eeeccf3e6",
     "packages/native-client-ui/src/components/TerminalScrollbar.tsx": "1821628d723337ecc9233e1b41743926c12e69eaae9c61f686348cf72f71eba4",
     "packages/native-client-ui/src/components/TerminalTouchClipboardUI.tsx": "f2b199794ce022c347661f3415d07b20e1b52129303adc7d0273752f2ccb3524",
     "packages/native-client-ui/src/components/TerminalTouchToolbar.tsx": "39e535d77c7dc5fc5d80e2acedb190fdc7b075cb174eb44f49162b6cd9a9f721",
@@ -266,7 +266,7 @@
     "packages/native-client-ui/src/lib/terminal-native-input.ts": "3bb822981073143358baff80a34c0125d67c039432b82f52d51e99ed304b32d4",
     "packages/native-client-ui/src/lib/terminal-pane-sizing.ts": "af67676757bb88095098c166b0f084d66c6c87ea7d8680faedafaf898216e912",
     "packages/native-client-ui/src/lib/terminal-paste.ts": "df4db2aaaa2aacfa1253f86805e9e28a7bc6fd0451ebf1bb4e83d78a2f9e1342",
-    "packages/native-client-ui/src/lib/terminal-renderer.ts": "2e7471fa2e6e29966e60ec3af32d0ce4c374e39483c6845d601970a9911e2311",
+    "packages/native-client-ui/src/lib/terminal-renderer.ts": "4208909a02f90bd486802dcc7e4c0eb850ffdb58a170d884b57195662ecf3c32",
     "packages/native-client-ui/src/lib/terminal-scroll.ts": "337ca6272f19c9d52c519d81125fa1dcf9580ea0f5762bfa931edfccb2a77828",
     "packages/native-client-ui/src/lib/terminal-scrollbar-model.test.ts": "327e11c4e8cc8910f75f4e6c7bbd4e90b5cd682d842f6cd97b8251e71915219c",
     "packages/native-client-ui/src/lib/terminal-scrollbar-model.ts": "4e32f923b4c7ae49b1a32087fe9b481b23fb901a1282a76662c6effec8afc427",
@@ -354,7 +354,7 @@
     "packages/workspace-ui/src/monaco.ts": "7d751ffa03634f5d63ded163380a55a373666c3dc780b8e4877b4e8bd19fedc2",
     "packages/workspace-ui/src/referral-bank-account.tsx": "79d3ea4efec4d12938e8abe947db56497dd965f5d3277a3217111405c2499360",
     "packages/workspace-ui/src/styles.css": "932f6a7e367b3ad32df11f2afd58e526d2c0abd309e50cab01b4ba7869162ad8",
-    "packages/workspace-ui/src/terminal-canvas-paint.ts": "ec953f2e87c48b1a7ff39cb4d28903e4eee130ab8330d906276bde464b2e1b83",
+    "packages/workspace-ui/src/terminal-canvas-paint.ts": "34790168677a9bf7a2790d5cee2f89c5eb48dfc5e1fee0fc84f28fdba9f027c3",
     "packages/workspace-ui/src/terminal-canvas-selection.test.ts": "6d319fe9ee5bf72c687801de33179eda86512a600ae493434f58937af150db53",
     "packages/workspace-ui/src/terminal-canvas-selection.ts": "ec9d27309af25f514436cafc50d16c8fade75460f545cdfeeb692189522376a6",
     "packages/workspace-ui/src/terminal-font.test.ts": "c6e0562685a18184c9af774412ecb3e70de542ae3616f13f74075a91b6b1ad27",
